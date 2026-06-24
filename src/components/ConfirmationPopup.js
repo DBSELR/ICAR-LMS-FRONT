@@ -7,8 +7,7 @@ const ConfirmationPopup = ({
   message,
   onConfirm,
   onCancel,
-  toastMessage, // ← no default value
-  singleButton = false // new prop: if true, show only OK
+  toastMessage // ← no default value
 }) => {
   const popupRef = useRef(null);
 
@@ -31,20 +30,12 @@ const ConfirmationPopup = ({
         <h5>Confirm Action</h5>
         <p>{message}</p>
         <div className="popup-actions mt-3">
-          {singleButton ? (
-            <button className="btn btn-primary" onClick={onConfirm}>
-              OK
-            </button>
-          ) : (
-            <>
-              <button className="btn btn-danger" onClick={handleConfirm}>
-                Yes
-              </button>
-              <button className="btn btn-secondary ms-2" onClick={onCancel}>
-                Cancel
-              </button>
-            </>
-          )}
+          <button className="btn btn-danger" onClick={handleConfirm}>
+            Yes
+          </button>
+          <button className="btn btn-secondary ms-2" onClick={onCancel}>
+            Cancel
+          </button>
         </div>
       </div>
     </div>

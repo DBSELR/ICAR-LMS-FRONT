@@ -198,9 +198,9 @@ function MentorAssign() {
       <LeftSidebar />
 
       <div className="section-wrapper">
-        <div className="page admin-dashboard pt-0">
+      <div className="page admin-dashboard">
         {/* Header styling */}
-        <div className="section-body mt-3 pt-0">
+        <div className="section-body mt-0 pt-0">
           <div className="container-fluid">
             <div className="jumbotron bg-light rounded shadow-sm mb-3 welcome-card dashboard-hero">
               <h2 className="page-title text-primary pt-0 dashboard-hero-title">
@@ -227,7 +227,7 @@ function MentorAssign() {
                         <tr>
                           <th>Select</th>
                           <th>Stream Details</th>
-                          
+                          <th>Semester</th>
                           <th>Count</th>
                         </tr>
                       </thead>
@@ -242,7 +242,7 @@ function MentorAssign() {
                               />
                             </td>
                             <td>{s.course}</td>
-                           
+                            <td>{s.ssem}</td>
                             <td>{s.count}</td>
                           </tr>
                         ))}
@@ -309,7 +309,7 @@ function MentorAssign() {
                     <thead>
                       <tr>
                         <th>Stream</th>
-                       
+                        <th>Semester</th>
                         <th>Student Count</th>
                         <th>Assigned SRO</th>
                         <th>Action</th>
@@ -319,6 +319,7 @@ function MentorAssign() {
                       {studentMentorData.map((item, index) => (
                         <tr key={index}>
                           <td>{item.course}</td>
+                          <td>{item.ssem}</td>
                           <td>{item.count}</td>
                           <td>{item.mentor}</td>
                           <td>
@@ -339,10 +340,9 @@ function MentorAssign() {
           </div>
         </div>
 
-         
+        <Footer />
       </div>
       </div>
-
       <ConfirmationPopup
         show={popupShow}
         message={popupMessage}

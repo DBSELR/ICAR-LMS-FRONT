@@ -130,7 +130,9 @@ function ViewDiscussions() {
       <RightSidebar />
       <LeftSidebar />
 
-      <div className="page section-body mt-3 instructor-course-page admin-dashboard pt-0">
+      <div className="section-wrapper">
+      <div className="page admin-dashboard">
+        <div className="section-body mt-3 pt-0">
         <div className="container-fluid">
           {/* Back Button */}
           <div className="d-flex justify-content-end mb-3">
@@ -144,41 +146,19 @@ function ViewDiscussions() {
 
           {/* Discussion Summary */}
           {discussion ? (
-           <div
-  className="card p-4 shadow-sm mb-4"
-  style={{ borderRadius: "20px", border: "1px solid #ccc" }}
->
-  {/* Title row with icon */}
-  <h5
-    className="fw-bold mb-2 d-flex align-items-center"
-    style={{ fontSize: "18px", fontWeight: "bold" }}
-  >
-    <i className="fa fa-book text-primary me-2 mr-2" aria-hidden="true"></i>
-    <span>{discussion.threadTitle}</span>
-  </h5>
+            <div className="card p-4 shadow-sm mb-4" style={{ borderRadius: "20px", border: "1px solid #ccc" }}>
+              <h5 className="fw-bold mb-2" style={{ fontSize: "18px", fontWeight: "bold" }}>
+                {discussion.threadTitle}
+              </h5>
+              <p className="text-muted">{discussion.threadContent}</p>
+              <div className="text-muted small mb-1">
+                <i className="fa fa-calendar text-primary me-2 mr-2"></i>
+                Open: {new Date(discussion.openDate).toLocaleString()}
 
-  {/* Content row with icon */}
-  <p className="text-muted d-flex align-items-start mb-0">
-    <i
-      className="fa fa-list-ol text-secondary me-2 mr-2"
-      style={{ fontSize: "0.9rem", marginTop: "2px" }}
-      aria-hidden="true"
-    ></i>
-    <span>{discussion.threadContent}</span>
-  </p>
-
-  {/* Date block (still commented out) */}
-  {/*
-  <div className="text-muted small mb-1 mt-3">
-    <i className="fa fa-calendar text-primary me-2 mr-2"></i>
-    Open: {new Date(discussion.openDate).toLocaleString()}
-
-    <i className="fa fa-clock me-2 text-primary ml-5 mr-2"></i>
-    Close: {new Date(discussion.closeDate).toLocaleString()}
-  </div>
-  */}
-</div>
-
+                <i className="fa fa-clock me-2 text-primary ml-5 mr-2"></i>
+                Close: {new Date(discussion.closeDate).toLocaleString()}
+              </div>
+            </div>
           ) : (
             <p>Loading discussion...</p>
           )}
@@ -219,7 +199,7 @@ function ViewDiscussions() {
             </div>
 
             {/* Reply Box */}
-            {discussion  ? (
+            {discussion && isReplyOpen() ? (
               <>
                 <h6 className="fw-bold mb-2">💬 Leave a Reply</h6>
                 <textarea
@@ -251,9 +231,11 @@ function ViewDiscussions() {
             ) : null}
           </div>
         </div>
+        </div>
+      </div>
       </div>
 
-       
+      <Footer />
     </div>
   );
 }

@@ -74,8 +74,8 @@ function StudentSubmissionHistory() {
       <LeftSidebar role="Student" />
 
       <div className="section-wrapper">
-          <div className="page admin-dashboard">
-        <div className="section-body mt-3 pt-0">
+      <div className="page admin-dashboard">
+        <div className="section-body mt-0 pt-0">
           <div className="container-fluid">
             <div className="jumbotron bg-light rounded shadow-sm mb-3 welcome-card dashboard-hero">
               <h2 className="page-title text-primary pt-0 dashboard-hero-title">
@@ -92,13 +92,13 @@ function StudentSubmissionHistory() {
                 className={`unit-tab ${activeTab === "theory" ? "active" : ""}`}
                 onClick={() => setActiveTab("theory")}
               >
-                Objective Exams
+                Assignments
               </button>
               <button
                 className={`unit-tab ${activeTab === "assignments" ? "active" : ""}`}
                 onClick={() => setActiveTab("assignments")}
               >
-                Subjective Exams 
+                Theory Exams 
               </button>
               
             </div>
@@ -107,12 +107,12 @@ function StudentSubmissionHistory() {
             {activeTab === "assignments" && (
               <div className="card shadow-sm border-0">
                 <div className="card-header bg-primary text-white font-weight-bold">
-                  Descriptive Theory & Assignment Submissions
+                  Theory Exam Submissions
                 </div>
                 <div className="card-body p-0">
                   {assignmentSubmissions.length === 0 ? (
                     <div className="text-center text-muted py-5">
-                      <h5>No Theory Exam submissions found.</h5>
+                      <h5>No assignment submissions found.</h5>
                     </div>
                   ) : (
                     <div className="table-responsive">
@@ -140,7 +140,7 @@ function StudentSubmissionHistory() {
                               <td>
                                 {s.FilePath ? (
                                   <a
-                                    href={`https://localhost:7163${s.FilePath}`}
+                                    href={`http://localhost:5129${s.FilePath}`}
                                     target="_blank"
                                     rel="noreferrer"
                                     className="btn btn-sm btn-outline-primary"
@@ -165,12 +165,12 @@ function StudentSubmissionHistory() {
             {activeTab === "theory" && (
               <div className="card shadow-sm border-0">
                 <div className="card-header bg-primary text-white font-weight-bold">
-                  MCQs Theory & Assignment Submissions
+                  Assignment Submissions
                 </div>
                 <div className="card-body p-0">
                   {examSubmissions.length === 0 ? (
                     <div className="text-center text-muted py-5">
-                      <h5>No Assignments submitted.</h5>
+                      <h5>No theory exams submitted.</h5>
                     </div>
                   ) : (
                     <div className="table-responsive">
@@ -214,9 +214,10 @@ function StudentSubmissionHistory() {
           </div>
         </div>
 
-         
+        <Footer />
       </div>
       </div>
+
     </div>
   );
 }

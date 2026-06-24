@@ -146,25 +146,35 @@ function AdminStudentOverview() {
       <LeftSidebar role="Admin" />
 
       <div className="section-wrapper">
-         <div className="page departments-page">
-        <div className="section-body mt-3 pt-0">
+      <div className="page admin-dashboard">
+        <div className="section-body mt-0 pt-0">
           <div className="container-fluid">
-            <div className="jumbotron bg-light p-4 rounded shadow-sm mb-4 welcome-card animate-welcome">
-                <h2 className="page-title text-primary pt-0 dashboard-hero-title">
-                  <i class="fa-solid fa-chart-line"></i> Student Progress Overview
-                </h2>
-                <p className="text-muted mb-0 dashboard-hero-sub">
-                    View student details, academic performance, and download reports.
-                </p>
-          </div>
+            <div className="jumbotron bg-light rounded shadow-sm mb-3 welcome-card dashboard-hero">
+                          <h2 className="page-title text-primary pt-0 dashboard-hero-title">
+                           <i class="fa-solid fa-chart-line"></i> Student Progress Overview
+                          </h2>
+                          <p className="text-muted mb-0 dashboard-hero-sub">
+                            View student details, academic performance, and download reports.
+                          </p>
+                        </div>
             <div className="row clearfix">
               <div className="col-md-4">
                 <div className="">
                   
                   <div className="card-body welcome-card animate-welcome">
-                    {/* <h6 style={{ fontWeight: "bold" }}>SELECT A STUDENT</h6> */}
-      
-      <div className="form-item">
+                    {/* <h6 style={{ fontWeight: "bold" }}>SELECT A STUDENT</h6>
+                    <input
+                      type="text"
+                      className="form-control mb-2"
+                      placeholder="Search student..."
+                      value={searchText}
+                      onChange={(e) => {
+                        console.log("⌨️ Search input changed:", e.target.value);
+                        setSearchText(e.target.value);
+                      }}
+                    /> */}
+
+                    <div className="form-item">
         <input
           type="text"
           className="form-control mb-2"
@@ -175,17 +185,6 @@ function AdminStudentOverview() {
         />
         <label htmlFor="username">SELECT A STUDENT</label>
         </div>
-
-                    {/* <input
-                      type="text"
-                      className="form-control mb-2"
-                      placeholder="Search student..."
-                      value={searchText}
-                      onChange={(e) => {
-                        console.log("⌨️ Search input changed:", e.target.value);
-                        setSearchText(e.target.value);
-                      }}
-                    /> */}
                     <ul className="list-group">
                       {filteredStudents.map((s) => (
                         <li
@@ -441,9 +440,8 @@ function AdminStudentOverview() {
             </div>
           </div>
         </div>
-         
+        <Footer />
       </div>
-
       </div>
     </div>
   );

@@ -56,8 +56,8 @@ function StudentExaminations() {
       <LeftSidebar role="Student" />
 
       <div className="section-wrapper">
-          <div className="page admin-dashboard">
-        <div className="section-body mt-3 pt-0">
+      <div className="page admin-dashboard">
+        <div className="section-body mt-0 pt-0">
           <div className="container-fluid">
             <div className="jumbotron bg-light rounded shadow-sm mb-3 welcome-card dashboard-hero">
               <h2 className="page-title text-primary pt-0 dashboard-hero-title">
@@ -69,7 +69,7 @@ function StudentExaminations() {
             </div>
 
             {exams.length === 0 && !loading && (
-              <div className="text-center text-muted">
+              <div className="text-center text-muted p-4 border rounded bg-light shadow-sm">
                 No examinations assigned.
               </div>
             )}
@@ -124,7 +124,7 @@ function StudentExaminations() {
             )}
           </div>
         </div>
-         
+        <Footer />
       </div>
       </div>
     </div>

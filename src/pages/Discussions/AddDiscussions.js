@@ -137,11 +137,11 @@ function AddDiscussions() {
       <LeftSidebar />
 
       <div className="section-wrapper">
-        <div className="page admin-dashboard pt-0">
-        {/* Welcome Header */}
-        <div className="section-body mt-3 pt-0">
+      <div className="page admin-dashboard">
+        <div className="section-body mt-0 pt-0">
           <div className="container-fluid">
-              <div className="jumbotron bg-light rounded shadow-sm mb-3  welcome-card dashboard-hero">
+        {/* Welcome Header */}
+        <div className="jumbotron bg-light rounded shadow-sm mb-3 welcome-card dashboard-hero">
           <h2 className="page-title text-primary pt-0 dashboard-hero-title">
             <i className="fa-solid fa-comment"></i> Add Discussion
           </h2>
@@ -151,7 +151,6 @@ function AddDiscussions() {
         </div>
           </div>
         </div>
-
         <div className="section-body mt-2">
           <div className="container-fluid">
             <div className="card welcome-card animate-welcome">
@@ -270,10 +269,9 @@ function AddDiscussions() {
           </div>
         </div>
 
-         
+        <Footer />
       </div>
       </div>
-
       {/* Toasts */}
       <ToastContainer />
 

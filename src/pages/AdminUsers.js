@@ -48,7 +48,7 @@ function AdminUsers() {
 
   // Filter roles and search input
   const filteredUsers = users
-    .filter((u) => u.role !== "Faculty" && u.role !== "Student")
+    .filter((u) => u.role !== "Instructor" && u.role !== "Student")
     .filter(
       (u) =>
         u.username.toLowerCase().includes(search.toLowerCase()) ||
@@ -140,10 +140,10 @@ function AdminUsers() {
       <HeaderTop />
       <RightSidebar />
       <LeftSidebar role="Admin" />
-      
+
       <div className="section-wrapper">
       <div className="page admin-dashboard">
-        <div className="section-body mt-3 pt-0">
+        <div className="section-body mt-0 pt-0">
           <div className="container-fluid">
             <div className="jumbotron bg-light rounded shadow-sm mb-3 welcome-card dashboard-hero">
               <h2 className="page-title text-primary pt-0 dashboard-hero-title">
@@ -193,10 +193,10 @@ function AdminUsers() {
               <div className="card-body p-0">
                 {currentUsers.length > 0 ? (
                   <div className="table-responsive">
-                    <table className="table table-hover table-striped align-middle mb-0 welcome-card dashboard-hero admin-users-others">
+                    <table className="table table-hover table-striped align-middle mb-0 welcome-card animate-welcome">
                       <thead className="thead-light">
                         <tr>
-                          {/* <th>Profile</th> */}
+                          <th>Profile</th>
                           <th onClick={() => handleSort("username")} style={{ cursor: "pointer" }}>
                             Username {sortField === "username" && (sortOrder === "asc" ? "▲" : "▼")}
                           </th>
@@ -208,12 +208,10 @@ function AdminUsers() {
                           <th className="text-center">Actions</th>
                         </tr>
                       </thead>
-                      
                       <tbody>
-                        
                         {currentUsers.map((user) => (
                           <tr key={user.userId}>
-                            {/* <td>
+                            <td>
                               <div
                                 className="avatar d-inline-block bg-primary text-white rounded-circle"
                                 style={{
@@ -226,7 +224,7 @@ function AdminUsers() {
                               >
                                 {user.username?.charAt(0)?.toUpperCase()}
                               </div>
-                            </td> */}
+                            </td>
                             <td>{user.username} - {user.firstName} {user.lastName}</td>
                             <td>{user.email || "-"}</td>
                             <td>
@@ -247,7 +245,7 @@ function AdminUsers() {
                                 {user.status}
                               </span>
                             </td>
-                            <td className=" others-user-actions">
+                            <td className="text-center">
                               <button
                                 className="btn btn-sm btn-info mr-1"
                                 onClick={() => handleEdit(user)}
@@ -269,7 +267,6 @@ function AdminUsers() {
                             </td>
                           </tr>
                         ))}
-                        
                       </tbody>
                     </table>
                   </div>
@@ -300,7 +297,7 @@ function AdminUsers() {
           </div>
         </div>
 
-         
+        <Footer />
 
         <RoleAssignModal
           isOpen={isRoleModalOpen}
@@ -323,6 +320,7 @@ function AdminUsers() {
         />
       </div>
       </div>
+
     </div>
   );
 }

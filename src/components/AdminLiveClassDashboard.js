@@ -100,15 +100,14 @@ const calendarEvents = classes.map((cls) => ({
       <RightSidebar />
       <LeftSidebar role="Admin" />
 
-      <div className="section-wrapper">
-         <div className="page admin-dashboard">
-        <div className="section-body mt-3 pt-0">
+      <div className="page">
+        <div className="section-body mt-3">
           <div className="container-fluid">
-           <div className="jumbotron bg-light rounded shadow-sm mb-3 welcome-card dashboard-hero">
-                  <h2 className="page-title text-primary pt-0 dashboard-hero-title">
+           <div className="jumbotron bg-light p-4 rounded shadow-sm mb-4 welcome-card animate-welcome">
+                          <h2 className="page-title text-primary">
                            <i class="fa-solid fa-video-camera"></i> Manage Live Classes
                           </h2>
-                          <p className="text-muted mb-0 dashboard-hero-sub">
+                          <p className="text-muted mb-0">
                             View, manage, and schedule live classes
                           </p>
                         </div>
@@ -233,8 +232,7 @@ const calendarEvents = classes.map((cls) => ({
             )}
           </div>
         </div>
-         
-      </div>
+        <Footer />
       </div>
     </div>
   );

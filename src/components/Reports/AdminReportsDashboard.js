@@ -19,10 +19,10 @@ function AdminReportsDashboard() {
       <HeaderTop />
       <RightSidebar />
       <LeftSidebar role="Admin" />
-
+       
       <div className="section-wrapper">
-        <div className="page admin-dashboard pt-0">
-        <div className="section-body mt-3 pt-0">
+      <div className="page admin-dashboard">
+        <div className="section-body mt-0 pt-0">
           <div className="container-fluid">
             <div className="jumbotron bg-light rounded shadow-sm mb-3 welcome-card dashboard-hero">
               <div>
@@ -56,7 +56,7 @@ function AdminReportsDashboard() {
                       Admission Details
                     </a>
                   </li>
-                  {/* <li className="nav-item">
+                  <li className="nav-item">
                     <a
                       className={`nav-link fw-bold text-dark border-0 ${activeTab === "fee" ? "active" : ""}`}
                       onClick={() => setActiveTab("fee")}
@@ -64,7 +64,7 @@ function AdminReportsDashboard() {
                     >
                       Fee Details
                     </a>
-                  </li> */}
+                  </li>
                   <li className="nav-item">
                     <a
                       className={`nav-link fw-bold text-dark border-0 ${activeTab === "faculty" ? "active" : ""}`}
@@ -76,8 +76,7 @@ function AdminReportsDashboard() {
                   </li>
                 </ul>
 
-                <div className="reports-tabs-body">
-                <div className="tab-content mt-0">
+                <div className="tab-content mt-3">
                   <div className={`tab-pane fade ${activeTab === "admission" ? "show active" : ""}`}>
                     <ReportsAdmission />
                   </div>
@@ -88,15 +87,14 @@ function AdminReportsDashboard() {
                     <ReportsFacultyDetails />
                   </div>
                 </div>
-                </div>
               </div>
             </div>
           </div>
         </div>
 
-         
+        <Footer />
       </div>
-      </div>
+        </div>
     </div>
   );
 }

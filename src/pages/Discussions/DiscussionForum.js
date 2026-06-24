@@ -43,10 +43,10 @@ function DiscussionForum() {
       <HeaderTop />
       <RightSidebar />
       <LeftSidebar />
-      
+
       <div className="section-wrapper">
-      <div className="page admin-dashboard pt-0">
-        <div className="section-body mt-3 pt-0">
+      <div className="page admin-dashboard">
+        <div className="section-body mt-0 pt-0"></div>
         <div className="container-fluid">
 
           {/* Header */}
@@ -107,17 +107,17 @@ function DiscussionForum() {
                         <span className="badge bg-light text-dark border ms-2 ml-2">Discussion</span>
                       </h6>
                       <p className="mb-2 text-muted">
-                       <i className="fa fa-book me-2 text-primary mr-2"></i>
-                        Unit-{thread.threadContent}
+                        <i className="fa fa-bell me-2 text-primary mr-2"></i>
+                        {thread.threadContent}
                       </p>
-                      {/* <div className="text-muted small mb-1">
+                      <div className="text-muted small mb-1">
                         <i className="fa fa-calendar text-primary me-2 mr-2"></i>
                         {new Date(thread.openDate).toLocaleDateString()} | {new Date(thread.openDate).toLocaleTimeString()}
-                      </div> */}
-                      {/* <div className="text-muted small mb-1">
+                      </div>
+                      <div className="text-muted small mb-1">
                         <i className="fa fa-clock text-primary me-2 mr-2"></i>
                         {new Date(thread.closeDate).toLocaleDateString()} | {new Date(thread.closeDate).toLocaleTimeString()}
-                      </div> */}
+                      </div>
                       <div className="text-muted small">
                         <i className="fa fa-comment text-primary me-2 mr-2"></i>
                         {thread.comments} comment{thread.comments !== 1 ? "s" : ""}
@@ -146,12 +146,10 @@ function DiscussionForum() {
             </div>
           )}
         </div>
-        </div>
-         
       </div>
       </div>
 
-      
+      <Footer />
     </div>
   );
 }

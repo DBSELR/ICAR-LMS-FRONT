@@ -282,13 +282,12 @@ const InstructorTickets = () => {
       <HeaderTop />
       <RightSidebar />
       <LeftSidebar role="Instructor" />
-      
-      <div className="section-wrapper">
-            <div className="page admin-dashboard pt-0">
 
-        <div className="section-body mt-3 pt-0">
-          <div className="container-fluid pl-0 pr-0">
-               <div className="jumbotron bg-light rounded shadow-sm mb-3 welcome-card dashboard-hero">
+      <div className="section-wrapper">
+      <div className="page admin-dashboard">
+        <div className="section-body mt-0 pt-0">
+        <div className="container-fluid">
+        <div className="jumbotron bg-light rounded shadow-sm mb-3 welcome-card dashboard-hero">
               <h2 className="page-title text-primary pt-0 dashboard-hero-title">
                 <i class="fa-solid fa-headset"></i> Assigned Support Tickets
               </h2>
@@ -298,7 +297,6 @@ const InstructorTickets = () => {
             </div>
           </div>
         </div>
-
         <div className="mb-3">
           <input
             type="text"
@@ -356,9 +354,8 @@ const InstructorTickets = () => {
             </tbody>
           </table>
         </div>
-         
+        <Footer />
       </div>
-
       </div>
       {/* View Modal */}
       <Modal
