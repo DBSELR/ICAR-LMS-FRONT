@@ -1,26 +1,29 @@
 import React, { useEffect, useState } from "react";
-import { Form, Button, Collapse } from "react-bootstrap";
+import { Form, Button } from "react-bootstrap";
 import { toast } from "react-toastify";
-import { FaChevronDown, FaChevronUp, FaEdit, FaTrash } from "react-icons/fa";
 import API_BASE_URL from "../../config";
+
+const DEBUG = true;
 
 const CoursesTab = ({ isActive }) => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [open, setOpen] = useState({});
+
   const [form, setForm] = useState({
-    batchName: "",
     courseCode: "",
     courseName: "",
-    numberOfSemesters: 1,
     fee: "",
-    isCertCourse: false,
-    isNoGrp: false,
     courseId: null,
   });
 
+  const [isEditing, setIsEditing] = useState(false);
+
+  // fetch courses when tab becomes active
   useEffect(() => {
-    if (isActive) fetchCourses();
+    if (isActive) {
+      fetchCourses();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive]);
 
   const fetchCourses = async () => {
@@ -28,9 +31,7 @@ const CoursesTab = ({ isActive }) => {
     try {
       const token = localStorage.getItem("jwt");
       const res = await fetch(`${API_BASE_URL}/Programme/All`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
       const normalized = data.map((course) => ({
@@ -39,46 +40,60 @@ const CoursesTab = ({ isActive }) => {
         isNoGrp: course.isNoGrp ?? course.IsNoGrp ?? false,
       }));
       setCourses(normalized);
-      console.log("Loaded Programmes :",courses);
-    } catch {
+      if (DEBUG) console.log("Loaded Programmes:", normalized);
+    } catch (e) {
       toast.error("❌ Failed to fetch courses", { autoClose: 3000 });
     } finally {
       setLoading(false);
     }
   };
 
+  // ====== FIX 1: derive courseName from the selected courseCode (AP-Andhra Pradesh) ======
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setForm((prev) => {
-      const updated = {
-        ...prev,
-        [name]: type === "checkbox" ? checked : value,
-      };
+    const { name, value } = e.target;
 
-      // 🔒 Enforce rule: If cert course is checked, isNoGrp must also be checked
-      if (name === "isCertCourse") {
-        if (checked) {
-          updated.isNoGrp = true;
-        }
+    console.log(`🔄 handleChange: ${name} = ${value}`);
+
+    if (name === "courseCode") {
+      let next = { ...form, courseCode: value };
+      if (value && value.includes("-")) {
+        const [, right] = value.split("-", 2);
+        next.courseName = (right || "").trim();
+        console.log(`📝 Derived courseName: ${next.courseName}`);
+      } else if (!form.courseName) {
+        next.courseName = "";
       }
+      setForm(next);
+      return;
+    }
 
-      return updated;
-    });
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-
   const handleEdit = (course) => {
-    setForm({
-      batchName: course.batchName,
-      courseCode: course.programmeCode,
-      courseName: course.programmeName,
-      numberOfSemesters: course.numberOfSemesters,
-      fee: course.fee,
-      isCertCourse: !!course.isCertCourse,
-      isNoGrp: !!course.isNoGrp,
-      courseId: course.programmeId,
-      installments : course.installments,
+    // Check if programmeCode already contains hyphen (combined format)
+    let courseCodeForForm;
+    if (course.programmeCode.includes("-")) {
+      courseCodeForForm = course.programmeCode;
+    } else {
+      courseCodeForForm = `${course.programmeCode}`;
+    }
+
+    console.log("🔄 Editing course:", {
+      original: course,
+      courseCodeForForm,
+      programmeCode: course.programmeCode,
+      programmeName: course.programmeName,
     });
+
+    setForm({
+      courseCode: courseCodeForForm,
+      courseName: course.programmeName ?? "",
+      fee: course.fee ?? "",
+      courseId: course.programmeId ?? null,
+    });
+    
+    setIsEditing(true);
   };
 
   const handleDelete = async (courseId) => {
@@ -87,14 +102,12 @@ const CoursesTab = ({ isActive }) => {
       const token = localStorage.getItem("jwt");
       const res = await fetch(`${API_BASE_URL}/Programme/${courseId}`, {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
       const errorText = await res.text();
       if (!res.ok) throw new Error(errorText || "Delete failed");
 
-      toast.success("🗑️ Programme Deleted successfully", { autoClose: 3000 });
+      toast.success("🗑️ Board Deleted successfully", { autoClose: 3000 });
       fetchCourses();
     } catch (err) {
       toast.error(`❌ Deletion failed: ${err.message}`, { autoClose: 3000 });
@@ -104,33 +117,46 @@ const CoursesTab = ({ isActive }) => {
   const handleSaveOrUpdate = async () => {
     toast.dismiss();
 
-    const {
-      batchName,
-      courseCode,
-      courseName,
-      numberOfSemesters,
-      fee,
-      installments,
-      isCertCourse,
-      isNoGrp,
-      courseId,
-    } = form;
+    const { courseCode, courseName, fee, courseId } = form;
 
-    if (!batchName || !courseCode || !courseName || !fee || !installments) {
-      toast.error("❌ Please fill all fields", { autoClose: 3000 });
+    // ====== FIX 2: only require Board + Fee; name is derived or split on backend ======
+    if (!courseCode || !fee) {
+      toast.error("❌ Please select a Board and enter Total Fee", {
+        autoClose: 3000,
+      });
+      return;
+    }
+
+    // Split courseCode to get proper programmeCode and programmeName
+    let finalProgrammeCode, finalProgrammeName;
+
+    if (courseCode.includes("-")) {
+      const [code, name] = courseCode.split("-", 2);
+      finalProgrammeCode = code?.trim() || "";
+      finalProgrammeName = name?.trim() || "";
+    } else {
+      finalProgrammeCode = courseCode;
+      finalProgrammeName = courseName?.trim() || "";
+    }
+
+    if (!finalProgrammeCode || !finalProgrammeName) {
+      toast.error("❌ Please provide valid Course information", {
+        autoClose: 3000,
+      });
       return;
     }
 
     const payload = {
-      programmeName: courseName,
-      programmeCode: courseCode,
-      numberOfSemesters: parseInt(numberOfSemesters),
+      programmeName: finalProgrammeName,
+      programmeCode: finalProgrammeCode, // send just the code part (AP, TG, etc.)
+      numberOfSemesters: 1,
       fee: parseFloat(fee),
-      installments:parseInt(installments),
-      batchName,
-      isCertCourse,
-      isNoGrp,
+      installments: 1,
+      isCertCourse: false,
+      isNoGrp: false,
     };
+
+    console.log("💾 Payload being sent:", payload);
 
     try {
       const token = localStorage.getItem("jwt");
@@ -141,28 +167,32 @@ const CoursesTab = ({ isActive }) => {
 
       const res = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+               headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify(payload),
       });
 
       const errorText = await res.text();
       if (!res.ok) throw new Error(errorText || "Save failed");
 
-      toast.success(`✅ Programme ${courseId ? "updated" : "created"} successfully`, {
-        autoClose: 3000,
-      });
+      toast.success(
+        `✅ Course ${courseId ? "updated" : "created"} successfully`,
+        {
+          autoClose: 3000,
+        }
+      );
 
+      // Reset form
       setForm({
-        batchName: "",
         courseCode: "",
         courseName: "",
-        numberOfSemesters: 1,
         fee: "",
-        installments:"",
-        isCertCourse: false,
-        isNoGrp: false,
         courseId: null,
       });
+      
+      setIsEditing(false);
 
       fetchCourses();
     } catch (err) {
@@ -170,134 +200,148 @@ const CoursesTab = ({ isActive }) => {
     }
   };
 
-  const toggle = (id) => {
-    setOpen((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
+  // compact cell padding style
+  const cellPad = { padding: "6px 8px" };
 
   return (
-    <div className="container py-0 welcome-card animate-welcome">
-      <div className="mb-2 bg-glass p-0">
-        <h5 className="mb-4 text-primary">Add / Edit Programmes</h5>
+    <div className="container py-0 pt-0 welcome-card animate-welcome" style={{ width: "100%" }}>
+      <div className="mb-0 bg-glass p-0">
+        <h5 className="mb-0 mt-0 text-primary">ADD / EDIT DISCIPLINE</h5>
         <Form>
           <div className="row gy-3">
-            <div className="col-md-6">
+             <div className="col-md-4">
               <Form.Group>
-                <Form.Label>Batch</Form.Label>
-                <Form.Control name="batchName" value={form.batchName} onChange={handleChange} />
+                <Form.Label>DISCIPLINE CODE</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="courseCode"
+                  value={form.courseCode}
+                  onChange={handleChange}
+                  // disabled={isEditing}
+                  required
+                />
               </Form.Group>
             </div>
 
-            <div className="col-md-6">
+            <div className="col-md-4">
               <Form.Group>
-                <Form.Label>Programme Code</Form.Label>
-                <Form.Control type="number" name="courseCode" value={form.courseCode} onChange={handleChange} />
+                <Form.Label>DISCIPLINE NAME</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="courseName"
+                  value={form.courseName}
+                  onChange={handleChange}
+                  required
+                />
               </Form.Group>
             </div>
 
-            <div className="col-md-6">
-              <Form.Group>
-                <Form.Label>Programme Name</Form.Label>
-                <Form.Control name="courseName" value={form.courseName} onChange={handleChange} />
-              </Form.Group>
-            </div>
+            
 
-            <div className="col-md-6">
+            {/* Course Name intentionally kept removed; auto-derived */}
+
+            <div className="col-md-4">
               <Form.Group>
-                <Form.Label>Semesters</Form.Label>
+                <Form.Label>Total Fee</Form.Label>
                 <Form.Control
                   type="number"
-                  min={1}
-                  name="numberOfSemesters"
-                  value={form.numberOfSemesters}
+                  step="0.01"
+                  name="fee"
+                  value={form.fee}
                   onChange={handleChange}
                 />
               </Form.Group>
             </div>
 
-            <div className="col-md-12 d-flex gap-4 mt-2 flex-wrap">
-              <Form.Check
-                label="Is Certificate Course"
-                name="isCertCourse"
-                type="checkbox"
-                checked={form.isCertCourse}
-                onChange={handleChange}
-              />
-              <Form.Check
-                label="Is No Grp"
-                name="isNoGrp"
-                type="checkbox"
-                checked={form.isNoGrp}
-                onChange={handleChange}
-                disabled={form.isCertCourse} // 🔒 disable when cert course is selected
-              />
-            </div>
-
-
-            <div className="col-md-6">
-              <Form.Group>
-                <Form.Label>Total Fee</Form.Label>
-                <Form.Control name="fee" value={form.fee} onChange={handleChange} />
-              </Form.Group>
-            </div>
-            <div className="col-md-6">
-              <Form.Group>
-                <Form.Label>Installments</Form.Label>
-                <Form.Control name="installments" value={form.installments} onChange={handleChange} />
-              </Form.Group>
-            </div>
-            <div className="col-12 mt-3">
-              <Button variant="success" className="w-100 w-md-auto" onClick={handleSaveOrUpdate}>
+            <div className="col-12 col-md-4 d-flex align-items-center mt-4 gap-2 board-save-btn course-tab-btns">
+              <Button
+                variant="success"
+                className="w-75 w-md-auto"
+                onClick={handleSaveOrUpdate}
+              >
                 {form.courseId ? "Update" : "Save"}
               </Button>
+              {isEditing && (
+                <Button
+                  variant="secondary"
+                  className="cancel"
+                  onClick={() => {
+                    setForm({
+                      courseCode: "",
+                      courseName: "",
+                      fee: "",
+                      courseId: null,
+                    });
+                    setIsEditing(false);
+                  }}
+                >
+                  Cancel
+                </Button>
+              )}
             </div>
           </div>
         </Form>
       </div>
 
-      <h5 className="mb-3">Programmes</h5>
-      {loading ? (
-        <p>Loading...</p>
-      ) : (
-        courses.map((course) => (
-          <div key={course.programmeId} style={{ margin: "10px" }}>
-            <button className="w-100 btn btn-dark text-start" onClick={() => toggle(course.programmeId)}>
-              {course.batchName} | {course.programmeCode} - {course.programmeName} | Sem: {course.numberOfSemesters} | Fee: ₹{course.fee}
-              {open[course.programmeId] ? (
-                <FaChevronUp className="float-end" />
-              ) : (
-                <FaChevronDown className="float-end" />
-              )}
-            </button>
-            <Collapse in={open[course.programmeId]}>
-             <div
-    className="bg-white border p-3 semester-panel-body"
-    style={{ transition: "all 0.3s", minHeight: "120px" }} // adjust minHeight as needed
-  >
-                <p>
-                  <strong>Code:</strong> {course.programmeCode}
-                </p>
-                <p>
-                  <strong>Name:</strong> {course.programmeName}
-                </p>
-                <p>
-                  <strong>Semesters:</strong> {course.numberOfSemesters}
-                </p>
-                <p>
-                  <strong>Fee:</strong> ₹{course.fee}
-                </p>
-                <div className="d-flex gap-2">
-                  <Button size="sm" variant="info" onClick={() => handleEdit(course)}>
-                    <FaEdit /> Edit
-                  </Button>
-                  <Button size="sm" variant="danger" onClick={() => handleDelete(course.programmeId)}>
-                    <FaTrash /> Delete
-                  </Button>
-                </div>
-              </div>
-            </Collapse>
+      <h5 className="mb-3">Courses</h5>
+
+      <div className="semester-panel-body">
+        {loading ? (
+          <p>Loading...</p>
+        ) : (
+          <div className="table-responsive">
+            <table className="table table-sm table-hover table-bordered align-middle mb-0">
+              <thead className="table-light">
+                <tr>
+                  <th style={{ ...cellPad, whiteSpace: "nowrap" }}>Course Code</th>
+                  <th style={{ ...cellPad, whiteSpace: "nowrap" }}>Course Name</th>
+                  <th style={{ ...cellPad, whiteSpace: "nowrap" }}>Fee (₹)</th>
+                  <th style={{ ...cellPad, width: 140, whiteSpace: "nowrap" }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {courses.length === 0 ? (
+                  <tr>
+                    <td style={cellPad} colSpan={3} className="text-center text-muted">
+                      No boards found.
+                    </td>
+                  </tr>
+                ) : (
+                  courses.map((course) => (
+                    <tr key={course.programmeId}>
+                      <td style={{ ...cellPad, whiteSpace: "nowrap" }}>
+                        {course.programmeCode}
+                      </td>
+                      <td style={{ ...cellPad, whiteSpace: "nowrap" }}>{course.programmeName}</td>
+                      <td style={{ ...cellPad, whiteSpace: "nowrap" }}>₹{course.fee}</td>
+                      <td style={cellPad} className="text-end">
+                        <div className="d-flex gap-2 justify-content-end">
+                          <Button
+                            size="sm"
+                            variant="info"
+                            onClick={() => handleEdit(course)}
+                            title="Edit"
+                          >
+                            <i className="fa-solid fa-pen-to-square"></i>
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            onClick={() => handleDelete(course.programmeId)}
+                            title="Delete"
+                          >
+                            <i className="fa-solid fa-trash"></i>
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
-        ))
-      )}
+        )}
+      </div>
     </div>
   );
 };

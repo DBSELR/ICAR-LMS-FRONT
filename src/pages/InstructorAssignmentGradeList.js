@@ -91,14 +91,14 @@
         <HeaderTop />
         <RightSidebar />
         <LeftSidebar role="Instructor" />
-        
+
         <div className="section-wrapper">
-        <div className="page admin-dashboard">
-          <div className="section-body mt-0 pt-0">
+          <div className="page admin-dashboard">
+          <div className="section-body mt-3 pt-0">
             <div className="container-fluid">
               <div className="jumbotron bg-light rounded shadow-sm mb-3 welcome-card dashboard-hero">
                 <div>
-                  <h2 className="page-title text-primary pt-0 dashboard-hero-title">Students Assignment Submissions</h2>
+                  <h2 className="text-primary  pt-0 dashboard-hero-title">Students Assignment Submissions</h2>
                   <p className="text-muted mb-0 dashboard-hero-sub">Review and grade Assignments below.</p>
                 </div>
               </div>
@@ -137,7 +137,7 @@
                           <td>{new Date(s.submissionDate).toLocaleString()}</td>
                           <td>
                             <a
-                              href={`http://localhost:5129${s.filePath}`}
+                              href={`https://localhost:7045${s.filePath}`}
                               target="_blank"
                               rel="noopener noreferrer"
                             >
@@ -200,10 +200,9 @@
               )}
             </div>
           </div>
-          <Footer />
+           
         </div>
         </div>
-
       </div>
     );
   }

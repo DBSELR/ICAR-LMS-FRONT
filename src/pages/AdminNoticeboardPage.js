@@ -119,10 +119,10 @@ function AdminNoticeboardPage() {
       <HeaderTop />
       <RightSidebar />
       <LeftSidebar role="Admin" />
-
+      
       <div className="section-wrapper">
-      <div className="page admin-dashboard">
-        <div className="section-body mt-0 pt-0">
+      <div className="page admin-dashboard pt-0">
+        <div className="section-body mt-3 pt-0">
           <div className="container-fluid">
             <div className="jumbotron bg-light rounded shadow-sm mb-3 welcome-card dashboard-hero">
               <h2 className="page-title text-primary pt-0 dashboard-hero-title">Manage Noticeboard</h2>
@@ -135,7 +135,7 @@ function AdminNoticeboardPage() {
                   <li className="nav-item">
                     <button
                       className={`nav-link text-dark fw-bold border-0 ${activeTab === "list" ? "active" : ""}`}
-                      style={{ borderBottom: activeTab === "list" ? "3px solid #5a67d8" : "", backgroundColor: "transparent" }}
+                      style={{ borderBottom: activeTab === "list" ? "3px solid #e65f1e" : "", backgroundColor: "transparent" }}
                       onClick={() => setActiveTab("list")}
                     >
                       <i className="fa fa-bullhorn mr-1 text-primary"></i> All Notices
@@ -144,7 +144,7 @@ function AdminNoticeboardPage() {
                   <li className="nav-item">
                     <button
                       className={`nav-link text-dark fw-bold border-0 ${activeTab === "create" ? "active" : ""}`}
-                      style={{ borderBottom: activeTab === "create" ? "3px solid #5a67d8" : "", backgroundColor: "transparent" }}
+                      style={{ borderBottom: activeTab === "create" ? "3px solid #e65f1e" : "", backgroundColor: "transparent" }}
                       onClick={() => setActiveTab("create")}
                     >
                       <i className="fa fa-plus mr-1 text-primary"></i> {editingId ? "Update Notice" : "Create Notice"}
@@ -226,10 +226,9 @@ function AdminNoticeboardPage() {
             </div>
           </div>
         </div>
-        <Footer />
+         
       </div>
       </div>
-
     </div>
   );
 }

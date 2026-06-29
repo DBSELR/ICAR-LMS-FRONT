@@ -104,10 +104,10 @@ function Courses() {
       <HeaderTop />
       <RightSidebar />
       <LeftSidebar role={role} />
-
+      
       <div className="section-wrapper">
       <div className="page admin-dashboard">
-        <div className="section-body  mt-0 pt-0">
+        <div className="section-body mt-3 pt-0">
           <div className="container-fluid">
           <div className="jumbotron bg-light rounded shadow-sm mb-3 welcome-card dashboard-hero">
             <h2 className="page-title text-primary pt-0 dashboard-hero-title">Hello {username}!</h2>
@@ -149,7 +149,7 @@ function Courses() {
                         id={`collapse-${key}`}
                         className=" p-3 mt-2"
                       >
-                        <div className="row semester-panel-body">
+                        <div className="row">
                           {list.map((course) => (
                             <div
                               className="col-md-6 col-lg-4 mb-4"
@@ -209,10 +209,9 @@ function Courses() {
             </div>
           </div>
         </div>
-        <Footer />
+         
       </div>
       </div>
-
     </div>
   );
 }

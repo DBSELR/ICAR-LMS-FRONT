@@ -6,6 +6,7 @@ import RightSidebar from "../components/RightSidebar";
 import Footer from "../components/Footer";
 import AddFeeForm from "../components/payments/AddFeeForm";
 import SemesterFeeTemplateManager from "../components/payments/SemesterFeeTemplateManager";
+import TransactionsTable from "../components/payments/TransactionsTable";
 import API_BASE_URL from "../config";
 
 function PaymentsPage() {
@@ -49,8 +50,8 @@ function PaymentsPage() {
       <LeftSidebar role="Admin" />
 
       <div className="section-wrapper">
-      <div className="page admin-dashboard">
-        <div className="section-body mt-0 pt-0">
+        <div className="page admin-dashboard">
+        <div className="section-body mt-3 pt-0">
           <div className="container-fluid">
             <div className="jumbotron bg-light rounded shadow-sm mb-3 welcome-card dashboard-hero">
                           <h2 className="page-title text-primary pt-0 dashboard-hero-title">
@@ -69,43 +70,32 @@ function PaymentsPage() {
                       className={`nav-link fw-bold text-dark border-0 ${activeTab === "fees-list" ? "active" : ""}`}
                       href="#fees-list"
                       onClick={(e) => { e.preventDefault(); setActiveTab("fees-list"); }}
-                      style={activeTab === "fees-list" ? { borderBottom: "3px solid #5a67d8" } : {}}
+                      style={activeTab === "fees-list" ? { borderBottom: "3px solid #e65f1e" } : {}}
                     >
                       <i className="fa fa-list mr-1 text-primary"></i> Fee List
                     </a>
                   </li>
-                  {/* Future Tab
-                  <li className="nav-item">
-                    <a
-                      className={`nav-link fw-bold text-dark border-0 ${activeTab === "fees-receipt" ? "active" : ""}`}
-                      href="#fees-receipt"
-                      onClick={(e) => { e.preventDefault(); setActiveTab("fees-receipt"); }}
-                      style={activeTab === "fees-receipt" ? { borderBottom: "3px solid #5a67d8" } : {}}
-                    >
-                      <i className="fa fa-file-text-o mr-1 text-primary"></i> Fee Receipts
-                    </a>
-                  </li>
-                  */}
-                  {/* Future Tab
-                  <li className="nav-item">
-                    <a
-                      className={`nav-link fw-bold text-dark border-0 ${activeTab === "fees-add" ? "active" : ""}`}
-                      href="#fees-add"
-                      onClick={(e) => { e.preventDefault(); setActiveTab("fees-add"); }}
-                      style={activeTab === "fees-add" ? { borderBottom: "3px solid #5a67d8" } : {}}
-                    >
-                      <i className="fa fa-plus mr-1 text-primary"></i> Add Fee
-                    </a>
-                  </li>
-                  */}
+                  
+                  
                   <li className="nav-item">
                     <a
                       className={`nav-link fw-bold text-dark border-0 ${activeTab === "fee-template" ? "active" : ""}`}
                       href="#fee-template"
                       onClick={(e) => { e.preventDefault(); setActiveTab("fee-template"); }}
-                      style={activeTab === "fee-template" ? { borderBottom: "3px solid #5a67d8" } : {}}
+                      style={activeTab === "fee-template" ? { borderBottom: "3px solid #e65f1e" } : {}}
                     >
                       <i className="fa fa-cogs mr-1 text-primary"></i> Fee Templates
+                    </a>
+                  </li>
+
+                  <li className="nav-item">
+                    <a
+                      className={`nav-link fw-bold text-dark border-0 ${activeTab === "transactions" ? "active" : ""}`}
+                      href="#transactions"
+                      onClick={(e) => { e.preventDefault(); setActiveTab("transactions"); }}
+                      style={activeTab === "transactions" ? { borderBottom: "3px solid #e65f1e" } : {}}
+                    >
+                      <i className="fa fa-exchange-alt mr-1 text-primary"></i> Transactions
                     </a>
                   </li>
                 </ul>
@@ -146,15 +136,22 @@ function PaymentsPage() {
                       <SemesterFeeTemplateManager />
                     </div>
                   )}
+
+                  {activeTab === "transactions" && (
+                    <div className="tab-pane fade show active" id="transactions">
+                      <TransactionsTable />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
 
           </div>
         </div>
-        <Footer />
+         
       </div>
-        </div>
+
+      </div>
     </div>
   );
 }

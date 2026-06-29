@@ -164,11 +164,11 @@ function Events() {
       <LeftSidebar role="Student" />
 
       <div className="section-wrapper">
-      <div className="page admin-dashboard">
-        <div className="section-body mt-0 pt-0">
+             <div className="page admin-dashboard pt-0">
+        <div className="section-body mt-3 pt-0">
           <div className="container-fluid">
              <div className="jumbotron bg-light rounded shadow-sm mb-3 welcome-card dashboard-hero">
-              <h2 className="page-title text-primary  pt-0 dashboard-hero-title">
+              <h2 className="page-title text-primary pt-0 dashboard-hero-title">
                 <i class="fa-solid fa-calendar"></i> Events Calendar
               </h2>
               <p className="text-muted mb-0 dashboard-hero-sub">
@@ -194,10 +194,9 @@ function Events() {
             </div>
           </div>
         </div>
-        <Footer />
+         
       </div>
       </div>
-
     </div>
   );
 }

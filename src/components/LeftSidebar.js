@@ -1,131 +1,249 @@
-import React, { useEffect, useState } from "react";
+// src/components/LeftSidebar.jsx
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
-import '../App.css';
-
+import "../App.css";
 
 function LeftSidebar({ role: propRole }) {
+  /* ===== Debug helpers ===== */
+  const DEBUG = true;
+  const log = (...args) => DEBUG && console.log("[LeftSidebar]", ...args);
+  const group = (label, fn) => {
+    if (!DEBUG) return fn?.();
+    console.groupCollapsed(`[LeftSidebar] ${label}`);
+    try { fn?.(); } finally { console.groupEnd(); }
+  };
+
+  const isSmallScreen = () => (typeof window !== "undefined" ? window.innerWidth <= 767 : false);
+
+  const location = useLocation();
+  const sidebarRef = useRef(null);
   const [userName, setUserName] = useState("User");
   const [role, setRole] = useState(propRole || "");
-  const location = useLocation();
+  const [serverMenus, setServerMenus] = useState([]);
+  const [mobile, setMobile] = useState(isSmallScreen());
 
+  // Force dynamic-only menus (no fallback)
+  const DYNAMIC_ONLY = true;
+
+  /* ===== Mount: set initial open/close by screen size ===== */
   useEffect(() => {
-    // Set sidebar open by default on all devices
-    document.body.classList.add('sidebar-open');
-    
-    const token = localStorage.getItem("jwt");
-    if (token) {
-      try {
-        const decoded = jwtDecode(token);
-        const resolvedRole =
-          decoded["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] || decoded.role;
-        const name =
-          decoded["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] ||
-          decoded["Username"] ||
-          decoded.name ||
-          "User";
-
-        setRole(resolvedRole);
-        setUserName(name);
-      } catch (err) {
-        console.error("Token decode failed", err);
-      }
+    const mobileNow = isSmallScreen();
+    setMobile(mobileNow);
+    if (mobileNow) {
+      document.body.classList.remove("sidebar-open"); // closed by default on mobile
+      log("Mounted: small screen, sidebar CLOSED by default");
+    } else {
+      document.body.classList.add("sidebar-open"); // open by default on desktop
+      log("Mounted: desktop, sidebar OPEN by default");
     }
   }, []);
 
-  // Ensure sidebar remains open when navigating between pages
+  /* ===== Handle window resize (debounced) to toggle default state ===== */
   useEffect(() => {
-    document.body.classList.add('sidebar-open');
-  }, [location.pathname]);
-
-  // Add click outside to close sidebar on mobile only
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      // Only apply this behavior on mobile devices (screen width <= 767px)
-      if (window.innerWidth <= 767) {
-        const sidebar = document.getElementById('left-sidebar');
-        const isClickInsideSidebar = sidebar && sidebar.contains(event.target);
-        const isMenuToggleClick = event.target.closest('.menu_toggle');
-        
-        // Close sidebar if click is outside sidebar and not on menu toggle button
-        if (!isClickInsideSidebar && !isMenuToggleClick) {
-          document.body.classList.remove('sidebar-open');
+    let t;
+    const onResize = () => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        const nowMobile = isSmallScreen();
+        if (nowMobile !== mobile) {
+          setMobile(nowMobile);
+          if (nowMobile) {
+            document.body.classList.remove("sidebar-open"); // switch to closed on mobile
+            log("Resize -> now MOBILE: closing sidebar by default");
+          } else {
+            document.body.classList.add("sidebar-open"); // open on desktop
+            log("Resize -> now DESKTOP: opening sidebar by default");
+          }
         }
-      }
+      }, 120);
+    };
+    window.addEventListener("resize", onResize);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [mobile]);
+
+  /* ===== Load user + menus from storage (and on storage updates) ===== */
+  useEffect(() => {
+    const loadFromStorage = () => {
+      group("loadFromStorage()", () => {
+        const token = localStorage.getItem("jwt");
+        log("jwt present?", !!token);
+
+        if (token) {
+          try {
+            const decoded = jwtDecode(token);
+            log("decoded token:", decoded);
+
+            const resolvedRole =
+              decoded?.["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] ||
+              decoded?.role ||
+              "";
+            const name =
+              decoded?.["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] ||
+              decoded?.Username ||
+              decoded?.name ||
+              "User";
+
+            setRole(resolvedRole);
+            setUserName(name);
+            log("resolved role:", resolvedRole, "resolved name:", name);
+          } catch (err) {
+            console.error("[LeftSidebar] Token decode failed", err);
+            setRole(propRole || "");
+            setUserName("User");
+          }
+        } else {
+          setRole(propRole || "");
+          setUserName("User");
+          log("no token; using propRole:", propRole || "");
+        }
+
+        const rawMenus = localStorage.getItem("menus");
+        log("raw menus in storage:", rawMenus);
+
+        if (rawMenus) {
+          try {
+            const parsed = JSON.parse(rawMenus);
+
+            // Normalize & sanitize menu items
+            const normalized = (Array.isArray(parsed) ? parsed : [])
+              .filter((m) => typeof m?.path === "string" && m.path.trim().length > 0)
+              .map((m) => {
+                let href = m.path.trim().replace(/\s+/g, " ");
+                if (!href.startsWith("/")) href = "/" + href;
+                href = href.replace(/\s+$/g, "");
+                return {
+                  icon: m?.icon || "fa fa-circle",
+                  label: (m?.text || m?.mainMenuName || "Menu").toString().trim(),
+                  href,
+                  order: Number.isFinite(m?.order) ? m.order : 0,
+                };
+              })
+              .sort((a, b) => a.order - b.order);
+
+            setServerMenus(normalized);
+            log("normalized menus (sanitized):", normalized);
+          } catch (e) {
+            console.error("[LeftSidebar] Failed to parse menus from storage", e);
+            setServerMenus([]);
+          }
+        } else {
+          setServerMenus([]);
+          log("no menus in storage; serverMenus cleared");
+        }
+      });
     };
 
-    // Add event listener
-    document.addEventListener('mousedown', handleClickOutside);
+    loadFromStorage();
 
-    // Cleanup event listener on unmount
+    const onStorage = (evt) => {
+      group("storage event", () => {
+        log("key:", evt?.key, "oldValue:", evt?.oldValue, "newValue:", evt?.newValue);
+        loadFromStorage();
+      });
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [propRole]);
+
+  /* ===== On route change: auto-close on small screens ===== */
+  useEffect(() => {
+    if (isSmallScreen()) {
+      document.body.classList.remove("sidebar-open");
+      log("route changed ->", location.pathname, "auto-closing sidebar on MOBILE");
+    }
+  }, [location.pathname]);
+
+  /* ===== Click-outside to close on mobile only ===== */
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!isSmallScreen()) return;
+
+      const sidebar = sidebarRef.current;
+      const isInside = sidebar && sidebar.contains(event.target);
+      const isMenuToggleClick = event.target.closest?.(".menu_toggle");
+      if (!isInside && !isMenuToggleClick) {
+        document.body.classList.remove("sidebar-open");
+        log("mobile: click outside sidebar -> closing");
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    log("mounted click-outside listener (mobile only)");
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
+      log("unmounted click-outside listener");
     };
   }, []);
 
-  const menuItemsByRole = {
-    Student: [
-      { icon: "fa fa-dashboard", label: "Dashboard", href: "/student-dashboard" },
-      { icon: "fa fa-book-open", label: "Courseware", href: "/my-courseware" },
-      { icon: "fa fa-pencil", label: "Subject List", href: "/student-examinations" },
-      { icon: "fa fa-file-pen", label: "Exams", href: "/student-exams" },
-      { icon: "fa fa-archive", label: "Library", href: "/studentlibrary" },
-      { icon: "fa fa-bar-chart", label: "My Submissions", href: "/student-submissions" },
-      { icon: "fa fa-check-circle", label: "My Progress", href: "/student/attendance" },
-      { icon: "fa fa-calendar", label: "Calendar", href: "/events" },
-      { icon: "fa fa-video-camera", label: "Live Classes", href: "/student/live-classes" },
-      { icon: "fa fa-credit-card", label: "Fee Status", href: "/fees/student" },
-      { icon: "fa fa-headset", label: "Support", href: "/student/support-tickets" },
-    ],
-    Instructor: [
-      { icon: "fa fa-dashboard", label: "Dashboard", href: "/instructor-dashboard" },
-      { icon: "fa fa-archive", label: "Library", href: "/library" },
-      { icon: "fa fa-book-open", label: "My Courseware", href: "/my-courseware" },
-      { icon: "fa fa-video-camera", label: "Live Classes", href: "/instructor/live-classes" },
-      { icon: "fa fa-file-pen", label: "Manage Exam", href: "/instructor/exams" },
-      { icon: "fa fa-video-camera", label: "Assignments", href: "/instructor/assignments/grade-list" },
-      { icon: "fa fa-bar-chart", label: "Grade Exam", href: "/instructor/grade-list" },
-      { icon: "fa fa-comment", label: "Add Discussions", href: "/adddiscussions" },
-      { icon: "fa fa-list-alt", label: "Taskboard", href: "/taskboard" },
-    ],
-    SRO: [
-      { icon: "fa fa-dashboard", label: "Dashboard", href: "/sro-dashboard" },
-      { icon: "fa fa-ticket", label: "Support Tickets", href: "/instructor/support-tickets" },
-      { icon: "fa fa-tasks", label: "Taskboard", href: "/taskboard" },
-    ],
-    Admin: [
-      { icon: "fa fa-dashboard", label: "Dashboard", href: "/admin-dashboard" },
-      { icon: "fa fa-university", label: "Departments", href: "/departments" },
-      { icon: "fa fa-book", label: "Programme Master", href: "/AdminDashboardTabs" },
-      { icon: "fa fa-book-open", label: "Courseware", href: "/my-courseware" },
-      { icon: "fa fa-user-secret", label: "Manage Users", href: "/users-dashboard" },
-      { icon: "fa fa-line-chart", label: "Student Progress", href: "/AdminStudentOverview" },
-      { icon: "fa fa-chalkboard-teacher", label: "Assign SRO", href: "/mentor-assign" },
-      { icon: "fa fa-comment", label: "Add Discussions", href: "/adddiscussions" },
-      { icon: "fa fa-archive", label: "Library", href: "/library" },
-      { icon: "fa fa-list-alt", label: "Role Menu Mapping", href: "/role-menu-mapping" },
-      { icon: "fa fa-video-camera", label: "Live Classes", href: "/instructor/live-classes" },
-      { icon: "fa fa-file-pen", label: "Manage Exam", href: "/admin-exams" },
-      { icon: "fa fa-credit-card", label: "Payments", href: "/payments" },
-      { icon: "fa fa-file", label: "Reports", href: "/AdminReportsDashboard" },
-      { icon: "fa fa-list-alt", label: "Taskboard", href: "/taskboard" },
-      { icon: "fa fa-headset", label: "Support", href: "/instructor/support-tickets" },
-    ],
+  /* ===== Keyboard: Esc closes on mobile ===== */
+  useEffect(() => {
+    const onKey = (e) => {
+      if (!isSmallScreen()) return;
+      if (e.key === "Escape") {
+        document.body.classList.remove("sidebar-open");
+        log("mobile: ESC pressed -> closing sidebar");
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
+  /* ===== Menus ===== */
+  const menuItems = useMemo(() => (DYNAMIC_ONLY ? serverMenus : serverMenus), [serverMenus]);
+
+  /* ===== Active route helpers ===== */
+  const path = location.pathname;
+
+  const isCoursewareActive =
+    path === "/my-courseware" ||
+    path.startsWith("/view-course-content") ||
+    path.startsWith("/instructor/upload-course-content");
+
+  const isManageUsersActive =
+    path.startsWith("/students") ||
+    path.startsWith("/professors") ||
+    path.startsWith("/admin-users");
+
+  // Treat item as active if the current path equals it OR starts with it (parent routes)
+  const isPathActiveForItem = (itemHref) => {
+    if (!itemHref) return false;
+    if (path === itemHref) return true;
+    // Avoid "/" matching everything
+    if (itemHref !== "/" && path.startsWith(itemHref + "/")) return true;
+    return false;
   };
 
-  const menuItems = menuItemsByRole[role] || [];
+  // Some menus act as "parents" for groups of routes; broaden active rules here.
+  const isGroupedActive = (itemHref) => {
+    // Any alias your dynamic "Manage Users" item might use:
+    const manageUsersAliases = ["/users-dashboard", "/manage-users", "/users"];
+    if (manageUsersAliases.includes(itemHref)) {
+      return isManageUsersActive || isPathActiveForItem(itemHref);
+    }
+    if (itemHref === "/my-courseware") {
+      return isCoursewareActive;
+    }
+    // Fallback: normal prefix match
+    return isPathActiveForItem(itemHref);
+  };
 
-  // Function to handle menu item click (sidebar stays open on all devices)
-  const handleMenuItemClick = () => {
-    // Sidebar remains open by default - no action needed
-    // This function can be used for future menu item specific actions
+  // Close helper (used on menu click)
+  const closeIfMobile = () => {
+    if (isSmallScreen()) {
+      document.body.classList.remove("sidebar-open");
+      log("menu item selected on MOBILE -> closing sidebar");
+    }
   };
 
   return (
-    <div id="left-sidebar" className="sidebar" style={{ paddingTop: "10px" }}>
+    <div id="left-sidebar" ref={sidebarRef} className="sidebar" style={{ paddingTop: "10px" }}>
       <div className="sidebar-header" style={{ padding: 0, paddingLeft: "20px" }}>
         <h5 className="brand-name d-flex align-items-center">
-          <img src="/assets/EdVedha-Logo.png" alt="logo" height="32" />
+          <img src="/assets/logo.png" alt="logo" height="52" />
         </h5>
       </div>
 
@@ -142,7 +260,9 @@ function LeftSidebar({ role: propRole }) {
           }}
         >
           <div className="text-center" style={{ padding: "0px" }}>
-            <div className="welcome-name">{userName} - ({role})</div>
+            <div className="welcome-name">
+              {userName} - ({role || "N/A"})
+            </div>
           </div>
         </div>
       </div>
@@ -150,38 +270,35 @@ function LeftSidebar({ role: propRole }) {
       <div>
         <nav className="sidebar-nav">
           <ul className="metismenu">
-            {menuItems.map((item, index) => {
-              const isCoursewareActive =
-                item.href === "/my-courseware" &&
-                (
-                  location.pathname === "/my-courseware" ||
-                  location.pathname.startsWith("/view-course-content") ||
-                  location.pathname.startsWith("/instructor/upload-course-content")
+            {menuItems.length === 0 ? (
+              <li className="text-muted px-3" style={{ opacity: 0.8 }}>
+                No menus assigned to this role.
+              </li>
+            ) : (
+              menuItems.map((item, index) => {
+                const active = isGroupedActive(item.href);
+
+                DEBUG &&
+                  console.debug(
+                    "[LeftSidebar] render menu",
+                    { idx: index, href: item.href, label: item.label },
+                    "active?", active
+                  );
+
+                return (
+                  <li key={`${item.href || "menu"}-${index}`}>
+                    <NavLink
+                      to={item.href || "#"}
+                      className={`d-flex align-items-center ${active ? "fw-bold text-primary" : ""}`}
+                      onClick={closeIfMobile}
+                    >
+                      <i className={`${item.icon || "fa fa-circle"} mr-2`} />
+                      <span>{item.label}</span>
+                    </NavLink>
+                  </li>
                 );
-
-              // const isManageUsersActive =
-              //   item.href === "/users-dashboard" &&
-              //   location.pathname.startsWith("/students");
-const isManageUsersActive =
-  item.href === "/users-dashboard" &&
-  (location.pathname.startsWith("/students") || location.pathname.startsWith("/professors")|| location.pathname.startsWith("/admin-users"));
-
-              const isActive =
-                isCoursewareActive || location.pathname === item.href || isManageUsersActive;
-
-              return (
-                <li key={index}>
-                  <NavLink
-                    to={item.href}
-                    className={`d-flex align-items-center ${isActive ? "fw-bold text-primary" : ""}`}
-                    onClick={handleMenuItemClick}
-                  >
-                    <i className={`${item.icon} mr-2`}></i>
-                    <span>{item.label}</span>
-                  </NavLink>
-                </li>
-              );
-            })}
+              })
+            )}
           </ul>
         </nav>
       </div>

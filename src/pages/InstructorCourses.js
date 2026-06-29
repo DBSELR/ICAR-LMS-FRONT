@@ -35,19 +35,20 @@ function InstructorCourses() {
         console.log("🎓 Role:", role);
 
         const res = await fetch(
-          `${API_BASE_URL}/course/by-instructor/${instructorId}`, {
-      method: "GET",
-      headers: {
-        "Authorization": `Bearer ${token}`, // ✅ Attach JWT token here
-      },
-    }
+          `${API_BASE_URL}/course/by-instructor/${instructorId}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`, // ✅ Attach JWT token here
+            },
+          }
         );
         const data = await res.json();
         console.log("📚 Fetched courses:", data);
 
         const grouped = {};
         data.forEach((course) => {
-          const key = `${course.batchName}-${course.semester}`;
+          const key = `${course.batchName}-${course.board}-${course.class}`;
           if (!grouped[key]) grouped[key] = [];
           grouped[key].push(course);
         });
@@ -105,80 +106,95 @@ function InstructorCourses() {
       <HeaderTop />
       <RightSidebar />
       <LeftSidebar role="Instructor" />
-      
+
       <div className="section-wrapper">
-      <div className="page admin-dashboard">
-        <div className="section-body mt-0 pt-0">
-        <div className="container-fluid">
-          <div className="card-body">
-            <div className="jumbotron bg-light rounded shadow-sm mb-3 welcome-card dashboard-hero">
-              <h2 className="page-title text-primary pt-0 dashboard-hero-title">
-                <i className="fa-solid fa-book-open"></i> My Courseware
-              </h2>
-              <p className="text-muted mb-0 dashboard-hero-sub">
-                View and Manage your Subjects below
-              </p>
-            </div>
-
-            {Object.keys(groupedCourses).length > 0 && (
-              <div className="d-flex justify-content-between align-items-center mb-3">
-                <button
-                  className="btn btn-sm btn-outline-primary"
-                  onClick={toggleAll}
-                >
-                  {allOpen ? "Collapse" : "Expand"}
-                </button>
-
-                <input
-                  type="text"
-                  className="form-control form-control-sm"
-                  style={{ width: "250px" }}
-                  placeholder="Search by Subject Name or Code"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-            )}
-
-            {Object.entries(groupedCourses).map(([key, courses]) => {
-              const filtered = filterCourses(courses);
-              console.log("🎯 Filtered courses for key:", key, filtered);
-              if (filtered.length === 0) return null;
-
-              return (
-                <div key={key} className="mb-4">
-                  <button
-                    className="semester-toggle-btn w-100 text-left d-flex justify-content-between align-items-center"
-                    onClick={() => toggleSemester(key)}
-                    aria-controls={`collapse-${key}`}
-                    aria-expanded={!!openSemesters[key]}
-                  >
-                    <span>
-                      <FaBookOpen className="me-2" /> {key} ({filtered.length}{" "}
-                      Subjects)
-                    </span>
-                    {openSemesters[key] ? <FaChevronUp /> : <FaChevronDown />}
-                  </button>
-                  <Collapse in={openSemesters[key]}>
-                    <div id={`collapse-${key}`} className="p-3 mt-2 semester-panel-body">
-                      {filtered.map((course) => (
-                        <CourseCard
-                          key={course.courseId}
-                          course={course}
-                          navigate={navigate}
-                          role={userRole}
-                        />
-                      ))}
-                    </div>
-                  </Collapse>
+        <div className="page admin-dashboard pt-0">
+          <div className="section-body mt-2 pt-0">
+            <div className="container-fluid">
+              <div className="card-body">
+                <div className="jumbotron bg-light rounded shadow-sm mb-3 welcome-card dashboard-hero">
+                  <h2 className="page-title text-primary pt-0 dashboard-hero-title">
+                    <i className="fa-solid fa-book-open"></i> My Courseware
+                  </h2>
+                  <p className="text-muted mb-0 dashboard-hero-sub">
+                    View and Manage your Subjects below
+                  </p>
                 </div>
-              );
-            })}
+
+                {Object.keys(groupedCourses).length > 0 && (
+                  <div className="d-flex justify-content-between align-items-center mb-3">
+                    <button
+                      className="btn btn-sm btn-outline-primary"
+                      onClick={toggleAll}
+                      title={allOpen ? "Collapse all" : "Expand all"}
+                      aria-label={allOpen ? "Collapse all" : "Expand all"}
+                    >
+                      {allOpen ? (
+                        <i className="fa-solid fa-minimize" />
+                      ) : (
+                        <i className="fa-solid fa-maximize" />
+                      )}
+                    </button>
+
+                    <input
+                      type="text"
+                      className="form-control form-control-sm"
+                      style={{ width: "250px" }}
+                      placeholder="Search by Subject Name or Code"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                {Object.entries(groupedCourses).map(([key, courses]) => {
+                  const filtered = filterCourses(courses);
+                  console.log("🎯 Filtered courses for key:", key, filtered);
+                  if (filtered.length === 0) return null;
+
+                  return (
+                    <div key={key} className="mb-4">
+                      <button
+                        className="semester-toggle-btn w-100 text-left d-flex justify-content-between align-items-center"
+                        onClick={() => toggleSemester(key)}
+                        aria-controls={`collapse-${key}`}
+                        aria-expanded={!!openSemesters[key]}
+                      >
+                        <span>
+                          <FaBookOpen className="me-2" /> {key} (
+                          {filtered.length} Subject(s))
+                        </span>
+                        {openSemesters[key] ? (
+                          <FaChevronUp />
+                        ) : (
+                          <FaChevronDown />
+                        )}
+                      </button>
+
+                      <Collapse in={openSemesters[key]}>
+                        {/* 👇 give the opened panel its own scroll */}
+                        <div
+                          id={`collapse-${key}`}
+                          className="p-3 mt-2 semester-panel-body"
+                          tabIndex={-1}
+                        >
+                          {filtered.map((course) => (
+                            <CourseCard
+                              key={course.courseId}
+                              course={course}
+                              navigate={navigate}
+                              role={userRole}
+                            />
+                          ))}
+                        </div>
+                      </Collapse>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
-        </div>
-        <Footer />
-      </div>
       </div>
     </div>
   );
@@ -196,7 +212,7 @@ function CourseCard({ course, navigate, role }) {
           {
             method: "GET",
             headers: {
-              "Authorization": `Bearer ${token}`, // ✅ Attach JWT token here
+              Authorization: `Bearer ${token}`, // ✅ Attach JWT token here
             },
           }
         );
@@ -235,6 +251,7 @@ function CourseCard({ course, navigate, role }) {
                   batchName: course.batchName,
                   name: course.name,
                   semester: course.semester,
+                  class: course.class,
                 },
               });
             }}
@@ -269,28 +286,63 @@ function CourseCard({ course, navigate, role }) {
 
       <div className="row g-4">
         <div className="col-md-7">
-          <div className="course-info-box welcome-card animate-welcome">
+          {/* <div className="course-info-box welcome-card animate-welcome">
             <h6 className="course-info-title mb-3">
               <i className="fas fa-book-open me-2"></i>Courseware
             </h6>
            <div className="course-stats-container">
-  {renderCourseStat("Video", details.videoCount)}
-  {renderCourseStat("E-Book", details.ebookCount)}
+  
   {renderCourseStat("Web Resource", details.webCount)}
-  {renderCourseStat(
-  "FAQ / Study Guide",
-  `${details.faqCount} / ${details.sgCount}`
-)}
-
-  {renderCourseStat("Misconceptions", details.misconceptionsCount)}
+   {renderCourseStat("FAQ", details.faqCount)}
+   {renderCourseStat("Study Guide", details.sgCount)}
   {renderCourseStat("Practice Test", details.paCount)}
-  {/* {renderCourseStat("Study Guide", details.sgCount)} */}
   {renderCourseStat("Live Class", details.livecount)}
   {renderCourseStat("Assignments", details.assignmentCount)}
   {renderCourseStat("Exams", details.examCount)}
   {renderCourseStat("Discussions", details.discussionCount)}
+  
 </div>
 
+          </div> */}
+
+          <div className="course-info-box welcome-card animate-welcome">
+            <h6 className="course-info-title mb-3">
+              <i className="fas fa-book-open me-2"></i>Courseware
+            </h6>
+
+            <div className="course-stats-container">
+              {/* Row 1 (4 items) */}
+              <div className="row g-3">
+                <div className="col-12 col-sm-6 col-lg-3">
+                  {renderCourseStat("Web Resource", details.webCount)}
+                </div>
+                <div className="col-12 col-sm-6 col-lg-3">
+                  {renderCourseStat("FAQ", details.faqCount)}
+                </div>
+                <div className="col-12 col-sm-6 col-lg-3">
+                  {renderCourseStat("Study Guide", details.sgCount)}
+                </div>
+                <div className="col-12 col-sm-6 col-lg-3">
+                  {renderCourseStat("Practice Test", details.paCount)}
+                </div>
+              </div>
+
+              {/* Row 2 (4 items) */}
+              <div className="row g-3 mt-2">
+                <div className="col-12 col-sm-6 col-lg-3">
+                  {renderCourseStat("Live Class", details.livecount)}
+                </div>
+                <div className="col-12 col-sm-6 col-lg-3">
+                  {renderCourseStat("Assignments", details.assignmentCount)}
+                </div>
+                <div className="col-12 col-sm-6 col-lg-3">
+                  {renderCourseStat("Exams", details.examCount)}
+                </div>
+                <div className="col-12 col-sm-6 col-lg-3">
+                  {renderCourseStat("Discussions", details.discussionCount)}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -360,12 +412,8 @@ function CourseCard({ course, navigate, role }) {
 function renderCourseStat(label, count) {
   return (
     <div className="course-stat-item">
-      <div className="course-stat-count">
-        {count || 0}
-      </div>
-      <div className="course-stat-label">
-        {label}
-      </div>
+      <div className="course-stat-count">{count || 0}</div>
+      <div className="course-stat-label">{label}</div>
     </div>
   );
 }

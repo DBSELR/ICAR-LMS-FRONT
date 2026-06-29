@@ -282,12 +282,13 @@ const InstructorTickets = () => {
       <HeaderTop />
       <RightSidebar />
       <LeftSidebar role="Instructor" />
-
+      
       <div className="section-wrapper">
-      <div className="page admin-dashboard">
-        <div className="section-body mt-0 pt-0">
-        <div className="container-fluid">
-        <div className="jumbotron bg-light rounded shadow-sm mb-3 welcome-card dashboard-hero">
+            <div className="page admin-dashboard pt-0">
+
+        <div className="section-body mt-3 pt-0">
+          <div className="container-fluid pl-0 pr-0">
+               <div className="jumbotron bg-light rounded shadow-sm mb-3 welcome-card dashboard-hero">
               <h2 className="page-title text-primary pt-0 dashboard-hero-title">
                 <i class="fa-solid fa-headset"></i> Assigned Support Tickets
               </h2>
@@ -297,6 +298,7 @@ const InstructorTickets = () => {
             </div>
           </div>
         </div>
+
         <div className="mb-3">
           <input
             type="text"
@@ -354,8 +356,9 @@ const InstructorTickets = () => {
             </tbody>
           </table>
         </div>
-        <Footer />
+         
       </div>
+
       </div>
       {/* View Modal */}
       <Modal
@@ -636,7 +639,7 @@ const InstructorTickets = () => {
       >
         <Modal.Header
           style={{
-            background: "linear-gradient(to bottom right, #5a67d8, #f8ceec)",
+            background: "linear-gradient(to bottom right, #e65f1e, #f8ceec)",
             borderBottom: "none",
             justifyContent: "flex-end",
             borderTopLeftRadius: "20px",
@@ -654,7 +657,7 @@ const InstructorTickets = () => {
         <Modal.Body
           className="text-center p-5"
           style={{
-            background: "linear-gradient(to bottom right, #5a67d8, #f8ceec)",
+            background: "linear-gradient(to bottom right, #e65f1e, #f8ceec)",
             color: "#fff",
             borderBottomLeftRadius: "20px",
             borderBottomRightRadius: "20px",

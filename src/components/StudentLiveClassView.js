@@ -43,6 +43,7 @@ const StudentLiveClassView = () => {
 
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [selectedVideoUrl, setSelectedVideoUrl] = useState("");
+  const [studentId, setStudentId] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem("jwt");
@@ -53,7 +54,7 @@ const StudentLiveClassView = () => {
     try {
       const decoded = jwtDecode(token);
       const id = decoded["UserId"] || decoded.userId || decoded.nameid;
-
+      setStudentId(id);
       fetch(`${API_BASE_URL}/LiveClass/Student/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -152,6 +153,58 @@ const StudentLiveClassView = () => {
     };
   });
 
+  const handleJoinClick = async (cls) => {
+  if (!studentId) {
+    console.warn("No studentId found, cannot mark attendance");
+    // Still allow joining
+    window.open(cls.meetingLink, "_blank", "noopener,noreferrer");
+    return;
+  }
+
+  const token = localStorage.getItem("jwt");
+
+  // Try to resolve examinationId property name
+  const examinationId =
+    cls.examinationId || cls.examinationID || cls.examinationid || cls.examination_id;
+
+  const payload = {
+    studentId: parseInt(studentId, 10),
+    examinationId: examinationId ? parseInt(examinationId, 10) : null,
+    joinTime: new Date().toISOString(), // backend takes .Date so only date is used
+    status: "Present",                  // or "Joined", "Attended", etc.
+    liveClassId: cls.liveClassId,
+  };
+
+  console.log("📝 Marking live class attendance:", payload);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/LiveClass/MarkLiveClassAttendance`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error("❌ Failed to mark attendance:", response.status, text);
+    } else {
+      const msg = await response.text();
+      console.log("✅ Attendance marked:", msg);
+    }
+  } catch (err) {
+    console.error("❌ Error calling attendance API:", err);
+  }
+
+  // Always open meeting (even if attendance API fails)
+  if (cls.meetingLink) {
+    window.open(cls.meetingLink, "_blank", "noopener,noreferrer");
+  }
+};
+
+
   return (
     <div id="main_content" className="font-muli theme-blush">
       {/* Modal for Recorded Video */}
@@ -164,7 +217,7 @@ const StudentLiveClassView = () => {
                 <button type="button" className="btn-close" onClick={() => setShowVideoModal(false)}></button>
               </div>
             <div className="modal-body">
-  <p className="text-muted">📺 URL: {selectedVideoUrl}</p>
+  {/* <p className="text-muted">📺 URL: {selectedVideoUrl}</p> */}
   <video width="100%" height="auto" controls onError={(e) => console.error("❌ Video load error:", e)}>
     <source
   src={selectedVideoUrl}
@@ -195,8 +248,8 @@ const StudentLiveClassView = () => {
       <LeftSidebar role="Student" />
 
       <div className="section-wrapper">
-      <div className="page admin-dashboard">
-        <div className="section-body mt-0 pt-0">
+            <div className="page admin-dashboard pt-0">
+        <div className="section-body mt-3 pt-0">
           <div className="container-fluid">
             <div className="jumbotron bg-light rounded shadow-sm mb-3 welcome-card dashboard-hero">
               <h2 className="page-title text-primary pt-0 dashboard-hero-title">
@@ -219,7 +272,7 @@ const StudentLiveClassView = () => {
                 {Object.keys(groupedClasses).length > 0 && (
                   <div className="text-right mb-3">
                     <button className="btn btn-sm btn-outline-primary" onClick={toggleAll}>
-                      {allOpen ? "Collapse" : "Expand"}
+                      {allOpen ? "Close All" : "Open All"}
                     </button>
                   </div>
                 )}
@@ -238,7 +291,7 @@ const StudentLiveClassView = () => {
 
                       <Collapse in={!!openGroup[index]}>
                         <div className="mt-3">
-                          <div className="row semester-panel-body">
+                          <div className="row">
                             {classList.map((cls) => {
                               const status = getClassStatus(cls);
                               const [year, month, day] = cls.liveDate.split("T")[0].split("-");
@@ -268,17 +321,21 @@ const StudentLiveClassView = () => {
                                         </div>
 
                                         {cls.meetingLink && canJoin(cls) && (
-                                          <button className="btn btn-sm btn-success mt-2" onClick={() => window.open(cls.meetingLink, "_blank")}>
-                                            <i className="fa fa-play-circle mr-1"></i> Join
-                                          </button>
-                                        )}
+  <button
+    className="btn btn-sm btn-success mt-2"
+    onClick={() => handleJoinClick(cls)}
+  >
+    <i className="fa fa-play-circle mr-1"></i> Join
+  </button>
+)}
+
 
                                         {cls.fileurl && (
                                           <button
   className="btn btn-sm btn-info mt-2"
   onClick={() => {
    const fullUrl = cls.fileurl.startsWith("/")
-  ? `http://localhost:5129${cls.fileurl}`
+  ? `http://localhost:7045${cls.fileurl}`
   : cls.fileurl;
 
 console.log("🎬 Opening recording:", fullUrl);
@@ -313,7 +370,7 @@ setSelectedVideoUrl(fullUrl);
             )}
           </div>
         </div>
-        <Footer />
+         
       </div>
       </div>
     </div>

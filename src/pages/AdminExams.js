@@ -30,6 +30,8 @@ function AdminExams() {
 
   const navigate = useNavigate();
 
+
+  
   useEffect(() => {
     const token = localStorage.getItem("jwt");
     if (!token) return;
@@ -132,9 +134,9 @@ function AdminExams() {
 
       const batch = course.batchName || "Unknown Batch";
       const semester = course.semester || "Unknown Semester";
-      const paper = `${course.paperCode} - ${course.paperName}` || "Unknown Paper";
+      const paper = `${course.board} - ${course.class}` || "Unknown Paper";
 
-      const batchSemesterKey = `Batch: ${batch} - Semester: ${semester}`;
+      const batchSemesterKey = `Batch: ${batch} `;
 
       if (!grouped[batchSemesterKey]) grouped[batchSemesterKey] = {};
       if (!grouped[batchSemesterKey][paper]) grouped[batchSemesterKey][paper] = [];
@@ -157,8 +159,8 @@ function AdminExams() {
       <LeftSidebar />
 
       <div className="section-wrapper">
-      <div className="page admin-dashboard">
-        <div className="section-body mt-0 pt-0">
+           <div className="page admin-dashboard">
+        <div className="section-body mt-3 pt-0">
           <div className="container-fluid">
             <div className="jumbotron bg-light rounded shadow-sm mb-3 welcome-card dashboard-hero">
               <h2 className="page-title text-primary pt-0 dashboard-hero-title">
@@ -260,7 +262,7 @@ function AdminExams() {
                                 }
                                 style={{ cursor: "pointer", color: "#fff" }}
                               >
-                                <div><strong>Paper:</strong> {paperName}</div>
+                                <div><strong>Course:</strong> {paperName}</div>
                                 <div className="badge badge-light text-dark px-2 py-1">
                                   Total Exams: {examList.length}
                                   <i className={`fa ml-2 ${openPaper[paperKey] ? "fa-chevron-up" : "fa-chevron-down"}`}></i>
@@ -268,7 +270,7 @@ function AdminExams() {
                               </div>
 
                               <Collapse in={!!openPaper[paperKey]}>
-                                <div className="mt-2 row semester-panel-body">
+                                <div className="mt-2 row">
                                   {examList.map((exam) => (
                                     <div className="col-lg-4 col-md-6 mb-3" key={exam.id}>
                                       <div className="card shadow-sm h-100">
@@ -311,10 +313,12 @@ function AdminExams() {
             )}
           </div>
         </div>
-      </div>
-        </div>
 
-      <Footer />
+          
+      </div>
+      </div>
+
+     
 
       {showModal && (
         <ExamFormModal

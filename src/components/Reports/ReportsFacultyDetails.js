@@ -93,10 +93,10 @@ function ReportsFacultyDetails() {
       <LeftSidebar role="Admin" /> */}
 
     
-        <div className="section-body mt-3 pt-0">
+        <div className="section-body mt-3">
           <div className="container-fluid">
-            <div className="jumbotron bg-light rounded shadow-sm mb-3 welcome-card dashboard-hero">
-              <h2 className="page-title text-primary pt-0 dashboard-hero-title">Faculty Details Report</h2>
+            <div className="jumbotron bg-light p-1 rounded shadow-sm mb-2 welcome-card dashboard-hero">
+              <h2 className="text-primary mb-1 dashboard-hero-title">Faculty Details Report</h2>
               <p className="text-muted mb-0 dashboard-hero-sub">Search and export faculty profiles and assigned courses.</p>
             </div>
 
@@ -193,7 +193,7 @@ function ReportsFacultyDetails() {
           </div>
         </div>
 
-        {/* <Footer /> */}
+         
       
     </div>
   );

@@ -65,10 +65,10 @@ const Notifications = () => {
       <HeaderTop />
       <RightSidebar />
       <LeftSidebar role="Student" />
-
+      
       <div className="section-wrapper">
-      <div className="page admin-dashboard">
-        <div className="section-body mt-0 pt-0">
+      <div className="page admin-dashboard pt-0">
+        <div className="section-body mt-3 pt-0">
           <div className="container-fluid">
             <div className="jumbotron bg-light rounded shadow-sm mb-3 welcome-card dashboard-hero">
                           <h2 className="page-title text-primary pt-0 dashboard-hero-title">
@@ -117,10 +117,9 @@ const Notifications = () => {
 
           </div>
         </div>
-        <Footer />
+         
       </div>
       </div>
-
     </div>
   );
 };

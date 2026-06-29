@@ -46,6 +46,7 @@ import RegisterPage from "./pages/RegisterPage";
 import SettingsPage from "./pages/SettingsPage";
 import StaffPage from "./pages/StaffPage";
 import StudentsPage from "./pages/StudentsPage";
+import Collegewisestudents from "./pages/Collegewisestudents";
 import TaskboardPage from "./pages/TaskboardPage";
 import TransportPage from "./pages/TransportPage";
 import IndexPage from "./pages/IndexPage";
@@ -123,6 +124,8 @@ import ReportsFacultyDetails from "./components/Reports/ReportsFacultyDetails";
 import InstructorExaminations from "./pages/InstructorExaminations";
 
 import StudentExaminations from "./pages/StudentExaminations";
+import CollegeDashboard from "./pages/CollegeDashboard";
+import AppGenesisDashboard from "./pages/AppGenesisDashboard";
 
 import InstructorEnterMarks from "./pages/InstructorEnterMarks";
 import AdminViewAllMarks from "./pages/AdminViewAllMarks";
@@ -156,6 +159,25 @@ import PracticeExam from "./pages/PracticeExam";
 import CaseStudy from "./pages/CaseStudy";
 import Recordedclasses from "./components/courses/Recordedclasses";
  import API_BASE_URL from "./config";
+import BusinessExecutiveDashboard from "./pages/BusinessExecutiveDashboard";
+// at the top of App.jsx
+import Footer from "./components/Footer"; // adjust path if your Footer.jsx lives elsewhere
+import Transactions from "./pages/Transactions";
+import AdminContentReadAnalytics from "./pages/AdminContentReadAnalytics";
+import AdminLiveClassAttendanceAnalytics from "./pages/AdminLiveClassAttendanceAnalytics";
+import PrivacyPolicy from "./pages/Tc/PrivacyPolicy";
+import CancellationPolicy from "./pages/Tc/CancellationPolicy";
+import TermsAndConditions from "./pages/Tc/TermsAndConditions";
+import ReturnExchangePolicy from "./pages/Tc/ReturnExchangePolicy";
+import RefundPolicy from "./pages/Tc/RefundPolicy";
+import BulkUploadStudents from "./components/students/BulkUploadStudents.jsx";
+import PaymentResult from "./pages/PaymentResult.js";
+import AdminSubjectiveExamsAttendanceAnalytics from "./pages/AdminSubjectiveExamsAttendanceAnalytics";
+import AdminObjectiveExamsAttendanceAnalytics from "./pages/AdminObjectiveExamsAttendanceAnalytics";
+import ApproveStudentsListPage from "./pages/ApproveStudentsListPage.js";
+import SendSms from "./pages/SendSms";
+import ApplyDiscount from "./pages/ApplyDiscount";
+
 
 function App() {
   const loggedInStudentId = 1;
@@ -279,11 +301,13 @@ function App() {
         <Route path="/inbox" element={<ProtectedRoute><Inbox /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
         <Route path="/students" element={<ProtectedRoute><StudentsPage /></ProtectedRoute>} />
+        <Route path="/collegewise-students" element={<ProtectedRoute><Collegewisestudents /></ProtectedRoute>} />
         <Route path="/taskboard" element={<ProtectedRoute><TaskboardPage /></ProtectedRoute>} />
         <Route path="/transport" element={<ProtectedRoute><TransportPage /></ProtectedRoute>} />
         {/* <Route path="/" element={<IndexPage />} /> */}
         <Route path="/student-dashboard" element={<ProtectedRoute><StudentDashboard /></ProtectedRoute>} />
         <Route path="/admin-dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+        <Route path="/business-executive-dashboard" element={<ProtectedRoute><BusinessExecutiveDashboard /></ProtectedRoute>} />
         <Route path="/assignments" element={<ProtectedRoute><StudentAssignments /></ProtectedRoute>} />
         <Route path="/admin-users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
         <Route path="/users-dashboard" element={<ProtectedRoute><UsersDashboard /></ProtectedRoute>} />
@@ -509,8 +533,43 @@ function App() {
         <Route path="/discussionforum" element={<ProtectedRoute><DiscussionForum /></ProtectedRoute>} />
         <Route path="/viewdiscussions" element={<ProtectedRoute><ViewDiscussions /></ProtectedRoute>} />
         <Route path="/casestudy" element={<ProtectedRoute><CaseStudy /></ProtectedRoute>} />
+        <Route path="/college-dashboard" element={<ProtectedRoute><CollegeDashboard /></ProtectedRoute>} />
+        <Route path="/appGenesis-dashboard" element={<ProtectedRoute><AppGenesisDashboard /></ProtectedRoute>} />
+        <Route path="/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
+       <Route path="/sendsms" element={<ProtectedRoute><SendSms /></ProtectedRoute>} />
+       <Route path="/apply-discount" element={<ProtectedRoute><ApplyDiscount /></ProtectedRoute>} />
 
+         <Route
+          path="/approve-students"
+          element={
+            <ProtectedRoute>
+              <ApproveStudentsListPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/content-read-analytics" element={<AdminContentReadAnalytics />} />
+        <Route path="/live-class-attendance-analytics" element={<AdminLiveClassAttendanceAnalytics />} />
+        <Route path="/SubjectiveExams-attendance-analytics" element={<AdminSubjectiveExamsAttendanceAnalytics />} />
+        <Route path="/ObjectiveExams-attendance-analytics" element={<AdminObjectiveExamsAttendanceAnalytics />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
+<Route path="/cancellation-policy" element={<CancellationPolicy />} />
+<Route path="/return-exchange-policy" element={<ReturnExchangePolicy />} />
+<Route path="/refund-policy" element={<RefundPolicy />} />
+<Route
+  path="/students/bulk-upload"
+  component={BulkUploadStudents}
+/>
+
+
+<Route path="/payment-result" element={<PaymentResult />} />
+<Route path="/payments-page" element={<PaymentsPage />} />
       </Routes>
+
+      {/* ✅ Global footer */}
+    <Footer />
+
+    
       {/* ✅ Place this once globally */}
       <ToastContainer
         position="bottom-center"

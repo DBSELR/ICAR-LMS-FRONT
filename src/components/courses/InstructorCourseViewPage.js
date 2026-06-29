@@ -1,17 +1,105 @@
+// ✅ Final – Any-file modal WITH PROGRESS – InstructorCourseViewPage.js
 import React, { useEffect, useState, useRef } from "react";
-import { Modal } from "react-bootstrap";
 import HeaderTop from "../../components/HeaderTop";
 import RightSidebar from "../../components/RightSidebar";
 import LeftSidebar from "../../components/LeftSidebar";
 import Footer from "../../components/Footer";
 import { useParams, useLocation, Link } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
-import { Document, Page, pdfjs } from "react-pdf";
 import API_BASE_URL from "../../config";
+import UniversalFileViewerModal from "../UniversalFileViewerModal.jsx";
 
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+/* =========================
+   Debug helpers (toggleable)
+   ========================= */
+const DEBUG = true;
+const tag = "ICVP";
+const mask = (str) =>
+  typeof str === "string" && str.length > 12
+    ? `${str.slice(0, 4)}…${str.slice(-4)}`
+    : str;
+const log = (...args) => DEBUG && console.log(`[${tag}]`, ...args);
+const warn = (...args) => DEBUG && console.warn(`[${tag}]`, ...args);
+const error = (...args) => DEBUG && console.error(`[${tag}]`, ...args);
 
+/* =========================
+   URL helpers
+   ========================= */
+function normalizeUrl(raw) {
+  if (!raw) return "";
+  let u = String(raw).trim();
+  if (
+    (u.startsWith('"') && u.endsWith('"')) ||
+    (u.startsWith("'") && u.endsWith("'"))
+  ) {
+    u = u.slice(1, -1);
+  }
+  u = u.replace(/&amp;/g, "&");
+  u = u.replace(/%22$/i, "");
+  return u;
+}
+function isHttpUrl(u) {
+  return /^https?:\/\//i.test(u || "");
+}
+function getApiOrigin() {
+  try {
+    const u = new URL(API_BASE_URL);
+    const path = u.pathname.replace(/\/+$/, "");
+    if (path.toLowerCase().endsWith("/api")) {
+      const stripped = path.replace(/\/api$/i, "");
+      return `${u.origin}${stripped || ""}`;
+    }
+    return u.origin;
+  } catch {
+    try {
+      const u = new URL(window.location.origin);
+      return u.origin;
+    } catch {
+      return "";
+    }
+  }
+}
+function toAbsoluteLocal(origin, pathOrUrl) {
+  if (!pathOrUrl) return "";
+  if (isHttpUrl(pathOrUrl)) return pathOrUrl;
+  if (!origin) return pathOrUrl;
+  if (pathOrUrl.startsWith("/")) return `${origin}${pathOrUrl}`;
+  return `${origin}/${pathOrUrl}`;
+}
 
+async function safeFetchJson(
+  url,
+  options = {},
+  { label = "", retries = 0, signal } = {}
+) {
+  const attempt = async () => {
+    const res = await fetch(url, { ...options, signal });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      console.warn(`[${tag}] Fetch failed${label ? " - " + label : ""}`, {
+        url,
+        status: res.status,
+        body: text,
+      });
+      throw new Error(`HTTP ${res.status} ${label || ""}`.trim());
+    }
+    return res.json();
+  };
+  let lastErr;
+  for (let i = 0; i <= retries; i++) {
+    try {
+      return await attempt();
+    } catch (e) {
+      lastErr = e;
+      if (i < retries) await new Promise((r) => setTimeout(r, 250 * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
+
+/* =========================
+   Component
+   ========================= */
 function InstructorCourseViewPage() {
   const { courseId } = useParams();
   const location = useLocation();
@@ -22,6 +110,10 @@ function InstructorCourseViewPage() {
   const courseDisplayName = location.state?.name || "Unknown Name";
   const semester = location.state?.semester || "Unknown Semester";
   const examId = location.state?.examinationID || "Unknown examination ID";
+  const className = location.state?.class || "Unknown Class";
+
+  const [rawContent, setRawContent] = useState([]);
+  const [unitTitleByUnit, setUnitTitleByUnit] = useState({});
 
   const [materials, setMaterials] = useState([]);
   const [ebooks, setEBOOKS] = useState([]);
@@ -35,17 +127,12 @@ function InstructorCourseViewPage() {
   const [exams, setExams] = useState([]);
   const [liveClasses, setLiveClasses] = useState([]);
 
-  const [showVideoModal, setShowVideoModal] = useState(false);
-  const [videoUrl, setVideoUrl] = useState("");
-  const [currentVideoProgress, setCurrentVideoProgress] = useState(0);
-
-  const [showFileModal, setShowFileModal] = useState(false);
-  const [fileUrl, setFileUrl] = useState("");
-  const [fileProgress, setFileProgress] = useState(0);
-  const [pageNumber, setPageNumber] = useState(1);
-  const [numPages, setNumPages] = useState(null);
-  const [visitedPages, setVisitedPages] = useState(new Set());
-
+  // === Any-file viewer modal state ===
+  const [viewerShow, setViewerShow] = useState(false);
+  const [viewerUrl, setViewerUrl] = useState("");
+  const [currentProgressKey, setCurrentProgressKey] = useState(null);
+  const [progressVersion, setProgressVersion] = useState(0); // force re-render when progress changes
+  const [currentContentId, setCurrentContentId] = useState(null); // 🔴 NEW: which content item is open
 
   const [activeUnit, setActiveUnit] = useState("");
   const [allUnits, setAllUnits] = useState([]);
@@ -60,96 +147,214 @@ function InstructorCourseViewPage() {
     webresources: useRef(null),
   };
 
-  const handleWatchVideo = (url) => {
-    const fullUrl = `http://localhost:5129${url}`;
-    setVideoUrl(fullUrl);
-    setShowVideoModal(true);
-    // Load progress from localStorage
-    const progress = parseInt(localStorage.getItem(`video-progress-${fullUrl}`)) || 0;
-    setCurrentVideoProgress(progress);
-  };
+  const apiOrigin = getApiOrigin();
+  const jwt = localStorage.getItem("jwt") || "";
 
-  const submitSubjectivePracticeExam = async (examId, studentId, file) => {
-    const token = localStorage.getItem("jwt");
-    const url = `${API_BASE_URL}/ExamSubmissions/PracticeExamSubjective?ExamId=${examId}&studentId=${studentId}`;
-    const headers = {
-      "Authorization": `Bearer ${token}`,
-    };
-    const formData = new FormData();
-    formData.append("file", file);
+  // Delete helpers
+  function getContentId(obj) {
+    return (
+      obj?.contentId ??
+      obj?.ContentId ??
+      obj?.id ??
+      obj?.Id ??
+      obj?.cid ??
+      obj?.Cid ??
+      null
+    );
+  }
+  const [deletingId, setDeletingId] = useState(null);
 
+  function removeContentLocallyById(id) {
+    const drop = (arr) =>
+      Array.isArray(arr) ? arr.filter((x) => getContentId(x) !== id) : [];
+    setEBOOKS((p) => drop(p));
+    setVideos((p) => drop(p));
+    setwebresources((p) => drop(p));
+    setfaq((p) => drop(p));
+    setmisconceptions((p) => drop(p));
+    setpracticeassignment((p) => drop(p));
+    setstudyguide((p) => drop(p));
+    setMaterials((p) => drop(p));
+  }
+
+  async function handleDeleteContent(item, e) {
+    if (e) e.stopPropagation();
+    const id = getContentId(item);
+    if (!id) {
+      warn("Cannot delete: no content id on item", item);
+      alert("Delete failed: content id not found.");
+      return;
+    }
+    if (
+      !window.confirm(
+        "Are you sure you want to delete this content? This cannot be undone."
+      )
+    ) {
+      return;
+    }
     try {
-      const res = await fetch(url, {
+      setDeletingId(id);
+      const token = localStorage.getItem("jwt");
+      const res = await fetch(`${API_BASE_URL}/Content/Delete/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const bodyText = await res.text().catch(() => "");
+      log("DELETE Content response", {
+        status: res.status,
+        ok: res.ok,
+        bodyText,
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status} ${bodyText || ""}`);
+
+      // Clean cached progress keys (best effort)
+      try {
+        const fileUrlAbs = item?.fileUrl
+          ? toAbsoluteLocal(apiOrigin, item.fileUrl)
+          : "";
+        [
+          `webresource-progress-${fileUrlAbs}`,
+          `faq-progress-${fileUrlAbs}`,
+          `practiceassignment-progress-${fileUrlAbs}`,
+          `studyguide-progress-${fileUrlAbs}`,
+        ].forEach((k) => localStorage.removeItem(k));
+      } catch {}
+
+      removeContentLocallyById(id);
+      alert("✅ Content deleted successfully.");
+    } catch (e2) {
+      error("Delete failed", e2);
+      alert("❌ Delete failed. See console for details.");
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  useEffect(() => {
+    log("Component mounted", {
+      courseId,
+      examId,
+      courseName,
+      courseCode,
+      batchName,
+      semester,
+      courseDisplayName,
+      apiOrigin,
+      API_BASE_URL,
+    });
+    return () => log("Component unmounted");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /* =========================
+     🔹 Helper: send progress to API (SP-based)
+     ========================= */
+  const reportProgressToServer = async (contentId, percent) => {
+    try {
+      const token = localStorage.getItem("jwt");
+      if (!token || !contentId) return;
+
+      await fetch(`${API_BASE_URL}/Content/updateprogress`, {
         method: "POST",
-        body: formData,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          contentId,
+          progressPercent: percent,
+        }),
       });
 
-      const result = await res.text();
-
-      if (!res.ok) throw new Error(result);
-
-      alert("✅ Subjective practice exam submitted successfully!");
+      log("Progress reported to server", { contentId, percent });
     } catch (err) {
-      alert("❌ Failed to submit subjective practice exam.");
+      error("Failed to report progress to server", {
+        contentId,
+        percent,
+        err,
+      });
     }
   };
 
-  const handleCloseVideo = () => {
-    setShowVideoModal(false);
-    setVideoUrl("");
-    setCurrentVideoProgress(0);
+  /* =========================
+     File view + progress
+     ========================= */
+  const cleanPath = (u) =>
+    String(u || "").replace(/^['"]|['"]$/g, "").replace(/&amp;/g, "&");
+
+  const buildProgressKey = (sectionKey, fileUrlAbs) => {
+    switch (sectionKey) {
+      case "webresources":
+        return `webresource-progress-${fileUrlAbs}`;
+      case "faq":
+        return `faq-progress-${fileUrlAbs}`;
+      case "practiceassignment":
+        return `practiceassignment-progress-${fileUrlAbs}`;
+      case "studyguide":
+        return `studyguide-progress-${fileUrlAbs}`;
+      default:
+        return `file-progress-${fileUrlAbs}`;
+    }
   };
 
-  
-
-  const handleViewFile = (url) => {
-  const fullUrl = `http://localhost:5129${url}`;
-  setFileUrl(fullUrl);
-  setShowFileModal(true);
-
-  // Load progress from localStorage
-  const progress = parseInt(localStorage.getItem(`ebook-progress-${fullUrl}`)) || 0;
-  setFileProgress(progress);
+  const getProgressForItem = (sectionKey, item) => {
+    const raw = cleanPath(item.fileUrl);
+    if (!raw) return { value: 0, key: null };
+    const fullUrl = raw.startsWith("http")
+      ? raw
+      : `${apiOrigin.replace(/\/+$/, "")}/${raw.replace(/^\/+/, "")}`;
+    const key = buildProgressKey(sectionKey, fullUrl);
+    const val = parseInt(localStorage.getItem(key), 10);
+    const value = Number.isFinite(val) && val >= 0 && val <= 100 ? val : 0;
+    return { value, key };
   };
 
-  const handleCloseFile = () => {
-    setShowFileModal(false);
-    setFileUrl("");
-    setFileProgress(0);
-    setPageNumber(1);
-    setNumPages(null);
-    setVisitedPages(new Set());
+  const handleViewFile = (sectionKey, item) => {
+    const raw = cleanPath(item.fileUrl);
+    if (!raw) return;
+    const fullUrl = raw.startsWith("http")
+      ? raw
+      : `${apiOrigin.replace(/\/+$/, "")}/${raw.replace(/^\/+/, "")}`;
+
+    const { key } = getProgressForItem(sectionKey, item);
+    setCurrentProgressKey(key || buildProgressKey(sectionKey, fullUrl));
+
+    // 🔴 NEW: store which contentId is being opened (for DB progress)
+    const cid = getContentId(item);
+    setCurrentContentId(cid || null);
+
+    setViewerUrl(fullUrl);
+    setViewerShow(true);
   };
 
-  const handlePageChange = (newPage) => {
-  setPageNumber(newPage);
+  const handleViewerHide = () => {
+    // When user closes the viewer, mark this file as 100% complete (or keep max)
+    if (currentProgressKey) {
+      const existing = parseInt(localStorage.getItem(currentProgressKey), 10);
+      const updated =
+        Number.isFinite(existing) && existing > 0
+          ? Math.max(existing, 100)
+          : 100;
 
-  setVisitedPages((prev) => {
-    const updated = new Set(prev);
-    updated.add(newPage);
+      localStorage.setItem(currentProgressKey, updated);
+      setProgressVersion((v) => v + 1); // trigger re-render
 
-    let percent = Math.round((updated.size / numPages) * 100);
-
-    // ✅ If user is on the last page, force 100%
-    if (newPage === numPages) {
-      percent = 100;
+      // 🔴 NEW: also report to API (only for students)
+      if (currentContentId && role === "Student" || role === "College") {
+        reportProgressToServer(currentContentId, updated);
+      }
     }
 
-    // Keep max progress (in case of revisits)
-    const storedProgress =
-      parseInt(localStorage.getItem(`ebook-progress-${fileUrl}`)) || 0;
+    setViewerShow(false);
+    setViewerUrl("");
+    setCurrentProgressKey(null);
+    setCurrentContentId(null);
+  };
 
-    const updatedProgress = Math.max(percent, storedProgress);
-
-    setFileProgress(updatedProgress);
-    localStorage.setItem(`ebook-progress-${fileUrl}`, updatedProgress);
-
-    return updated;
-  });
-};
-
+  /* =========================
+     Auth / data loads
+     ========================= */
   const [practiceExams, setPracticeExams] = useState([]);
-
   const [userId, setUserId] = useState(null);
   const [role, setRole] = useState("");
 
@@ -163,228 +368,260 @@ function InstructorCourseViewPage() {
           decoded[
             "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
           ];
-
-        console.log("🧠 Decoded User ID:", extractedUserId);
-        console.log("🧠 Decoded Role:", extractedRole);
-
+        log("JWT decoded", {
+          userId: extractedUserId,
+          role: extractedRole,
+          token: `Bearer ${mask(token)}`,
+        });
         setUserId(extractedUserId);
         setRole(extractedRole);
       } catch (err) {
-        console.error("❌ Error decoding JWT:", err);
+        error("Error decoding JWT:", err);
       }
+    } else {
+      warn("No JWT found in localStorage");
     }
   }, []);
 
   useEffect(() => {
     const fetchPracticeExams = async () => {
-      if (!activeUnit || !userId) {
-        console.warn("⛔ Skipping fetch: activeUnit or userId is missing", {
-          activeUnit,
-          userId,
-        });
-        return;
-      }
-
-      const unitId = Number(activeUnit.split("-")[1]);
+      if (!activeUnit || !userId) return;
+      const unitId = Number(String(activeUnit).split("-")[1]);
       const examinationId = parseInt(examId);
-
       const url = `${API_BASE_URL}/InstructorExam/StudentPracticeExams/?userId=${userId}&UnitId=${unitId}&examinationid=${examinationId}`;
-
-      // 📦 Log payload before fetch
-      console.log("📤 Fetching Practice Exams With Payload:", {
-        userId,
-        unitId,
-        examinationId,
-        fullUrl: url,
-      });
+      const token = localStorage.getItem("jwt");
 
       try {
-        const token = localStorage.getItem("jwt");
         const res = await fetch(url, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         });
-
-        // Check HTTP status
-        console.log("📥 Response Status:", res.status);
-
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-
-        // ✅ Full response logging
-        console.log("✅ Practice Exams Fetched:", data);
-
-        if (Array.isArray(data)) {
-          setPracticeExams(data);
-        } else {
-          console.warn("⚠️ API response is not an array:", data);
-          setPracticeExams([]);
-        }
-      } catch (error) {
-        console.error("❌ Error fetching practice exams:", error);
+        if (Array.isArray(data)) setPracticeExams(data);
+        else setPracticeExams([]);
+      } catch (err) {
+        error("Error fetching practice exams:", err);
         setPracticeExams([]);
       }
     };
-
     fetchPracticeExams();
   }, [activeUnit, examId, userId]);
 
   const [adminPracticeTests, setAdminPracticeTests] = useState([]);
-
+  const [deletingPracticeId, setDeletingPracticeId] = useState(null);
   useEffect(() => {
     const fetchAdminPracticeTests = async () => {
-      if (!userId || !activeUnit || !examId) {
-        console.warn("🚫 Missing userId, activeUnit, or examId", {
-          userId,
-          activeUnit,
-          examId,
-        });
-        return;
-      }
-
-      const unitId = Number(activeUnit.split("-")[1]);
+      if (!userId || !activeUnit || !examId) return;
+      const unitId = Number(String(activeUnit).split("-")[1]);
       const examinationId = parseInt(examId);
-
       const url = `${API_BASE_URL}/AssignmentSubmission/GetPracticeExamsSubmissionsById/?instructorId=${userId}&UnitId=${unitId}&examinationid=${examinationId}`;
-
-      console.log("📤 Fetching Admin Practice Tests", {
-        instructorId: userId,
-        unitId,
-        examinationId,
-        url,
-      });
+      const token = localStorage.getItem("jwt");
 
       try {
-        const token = localStorage.getItem("jwt");
         const res = await fetch(url, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         });
-
-        console.log("📥 Response Status:", res.status);
-        const data = await res.json();
-
-        console.log("✅ Admin Practice Tests Fetched:", data);
-
-        if (Array.isArray(data)) {
-          setAdminPracticeTests(data);
-        } else {
-          console.warn("⚠️ Expected an array. Got:", data);
-          setAdminPracticeTests([]);
+        if (!res.ok) {
+          const errorText = await res.text().catch(() => "");
+          error("AdminPracticeTests API error", {
+            status: res.status,
+            url,
+            responseText: errorText,
+          });
+          if (res.status === 500) {
+            setAdminPracticeTests([]);
+            return;
+          }
+          throw new Error(`HTTP ${res.status}: ${errorText || res.statusText}`);
         }
-      } catch (error) {
-        console.error("❌ Error fetching Admin Practice Tests:", error);
+        const data = await res.json();
+        if (Array.isArray(data)) setAdminPracticeTests(data);
+        else setAdminPracticeTests([]);
+      } catch (err) {
+        error("Error fetching Admin Practice Tests:", err);
         setAdminPracticeTests([]);
       }
     };
-
     fetchAdminPracticeTests();
   }, [userId, activeUnit, examId]);
 
+  const handleDeletePracticeTest = async (test, e) => {
+  if (e) e.stopPropagation();
+
+  // Decide which field is the ID
+  const id = test.examid ?? test.id ?? test.Id;
+  if (!id) {
+    alert("Delete failed: practice test ID not found.");
+    console.warn("[ICVP] No ID on practice test", test);
+    return;
+  }
+
+  if (
+    !window.confirm(
+      "Are you sure you want to delete this practice test? This cannot be undone."
+    )
+  ) {
+    return;
+  }
+
+  try {
+    setDeletingPracticeId(id);
+    const token = localStorage.getItem("jwt");
+
+    const res = await fetch(
+      `${API_BASE_URL}/AssignmentSubmission/Delete/${id}`, // 👈 adjust controller route if different
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (!res.ok && res.status !== 204) {
+      const txt = await res.text().catch(() => "");
+      throw new Error(`HTTP ${res.status}: ${txt || "Delete failed"}`);
+    }
+
+    // Remove from UI list
+    setAdminPracticeTests((prev) =>
+      prev.filter(
+        (x) => (x.examid ?? x.id ?? x.Id) !== id
+      )
+    );
+
+    alert("✅ Practice test deleted successfully.");
+  } catch (err) {
+    console.error("[ICVP] Failed to delete practice test", err);
+    alert("❌ Failed to delete practice test. See console for details.");
+  } finally {
+    setDeletingPracticeId(null);
+  }
+};
+
+
   useEffect(() => {
-    const fetchContent = async () => {
+    if (!courseId) return;
+    const token = localStorage.getItem("jwt");
+    const headers = { Authorization: `Bearer ${token}` };
+    const ac = new AbortController();
+
+    (async () => {
       try {
-        const token = localStorage.getItem("jwt");
-        const [contentRes, assignmentRes, liveClassRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/Content/Course/${courseId}`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }),
-          fetch(`${API_BASE_URL}/Assignment/GetAllAssignments`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }),
-          fetch(`${API_BASE_URL}/LiveClass/All`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }),
-        ]);
-
         const [content, allAssignments, allLiveClasses] = await Promise.all([
-          contentRes.json(),
-          assignmentRes.json(),
-          liveClassRes.json(),
+          safeFetchJson(
+            `${API_BASE_URL}/Content/Course/${courseId}`,
+            { headers, signal: ac.signal },
+            { label: "Content/Course", retries: 1 }
+          ),
+          safeFetchJson(
+            `${API_BASE_URL}/Assignment/GetAllAssignments`,
+            { headers, signal: ac.signal },
+            { label: "Assignments", retries: 1 }
+          ),
+          safeFetchJson(
+            `${API_BASE_URL}/LiveClass/All`,
+            { headers, signal: ac.signal },
+            { label: "LiveClass", retries: 1 }
+          ),
         ]);
 
-        const cid = parseInt(courseId);
+        setRawContent(Array.isArray(content) ? content : []);
 
-        setMaterials(content.filter((c) => c.contentType === "PDF"));
-        setEBOOKS(content.filter((c) => c.contentType === "EBOOK"));
-        setVideos(content.filter((c) => c.contentType === "Video"));
+        const ci = (v) => String(v || "").toLowerCase();
+        setEBOOKS(content.filter((c) => ci(c.contentType) === "ebook"));
+        setVideos(content.filter((c) => ci(c.contentType) === "video"));
         setwebresources(
-          content.filter((c) => c.contentType === "WebResources")
+          content.filter((c) => ci(c.contentType) === "webresources")
         );
-        setfaq(content.filter((c) => c.contentType === "FAQ"));
+        setfaq(content.filter((c) => ci(c.contentType) === "faq"));
         setmisconceptions(
-          content.filter((c) => c.contentType === "Misconceptions")
+          content.filter((c) => ci(c.contentType) === "misconceptions")
         );
         setpracticeassignment(
-          content.filter((c) => c.contentType === "PracticeAssignment")
+          content.filter((c) => ci(c.contentType) === "practiceassignment")
         );
-        setstudyguide(content.filter((c) => c.contentType === "StudyGuide"));
+        setstudyguide(
+          content.filter((c) => ci(c.contentType) === "studyguide")
+        );
+        setMaterials(content.filter((c) => ci(c.contentType) === "pdf"));
 
-        setAssignments(allAssignments.filter((a) => a.examinationid === cid));
-        setLiveClasses(allLiveClasses.filter((lc) => lc.examinationID === cid));
-      } catch (err) {}
-    };
+        const cid = parseInt(courseId);
+        setAssignments(
+          (allAssignments || []).filter((a) => a.examinationid === cid)
+        );
+        setLiveClasses(
+          (allLiveClasses || []).filter((lc) => lc.examinationID === cid)
+        );
+      } catch (err) {
+        console.error("[ICVP] Content bundle load failed", err);
+      }
+    })();
 
-    if (courseId) fetchContent();
+    return () => ac.abort();
   }, [courseId]);
 
   useEffect(() => {
-    const scrollTo = location.state?.scrollTo;
-    if (scrollTo && sectionRefs[scrollTo]?.current) {
-      setTimeout(() => {
-        sectionRefs[scrollTo].current.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-      }, 500);
+    const toStr = (v) => (v == null ? "" : String(v).trim());
+    const getUnit = (it) => toStr(it.unit ?? it.Unit);
+    const getTitle = (it) =>
+      toStr(it.title ?? it.Title ?? it.unitTitle ?? it.UnitTitle);
+
+    const unitSet = new Set();
+    const titleMap = {};
+
+    for (const it of rawContent || []) {
+      const u = getUnit(it);
+      if (!u) continue;
+      unitSet.add(u);
+      const t = getTitle(it);
+      if (t && !titleMap[u]) titleMap[u] = t;
     }
-  }, [
-    ebooks,
-    videos,
-    faq,
-    misconceptions,
-    practiceassignment,
-    studyguide,
-    webresources,
-  ]);
 
-  useEffect(() => {
-    const cleanedUnits = ebooks
-      .map((item) => item.unit?.trim())
-      .filter(Boolean);
-
-    const uniqueUnits = Array.from(new Set(cleanedUnits)).sort((a, b) => {
-      const getUnitNumber = (u) => parseInt(u?.split("-")[1]) || 0;
-      return getUnitNumber(a) - getUnitNumber(b);
-    });
-
-    setAllUnits(uniqueUnits);
-    if (uniqueUnits.length > 0) {
-      setActiveUnit(uniqueUnits[0]);
+    if (unitSet.size > 0) {
+      const byUnit = {};
+      for (const it of rawContent || []) {
+        const u = getUnit(it);
+        if (!u) continue;
+        (byUnit[u] ||= []).push(it);
+      }
+      for (const u of unitSet) {
+        if (!titleMap[u]) {
+          const firstWithTitle = (byUnit[u] || []).find((x) => getTitle(x));
+          if (firstWithTitle) titleMap[u] = getTitle(firstWithTitle);
+        }
+      }
     }
-  }, [ebooks]);
+
+    const num = (u) => {
+      const m = /(\d+)$/.exec(u.replace(/\s+/g, ""));
+      return m ? parseInt(m[1], 10) : 0;
+    };
+    const sortedUnits = Array.from(unitSet).sort((a, b) => num(a) - num(b));
+
+    setAllUnits(sortedUnits);
+    setUnitTitleByUnit(titleMap);
+
+    if (!activeUnit && sortedUnits.length > 0) {
+      setActiveUnit(sortedUnits[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rawContent]);
 
   const renderEmptyMessage = (label) => (
     <div className="text-muted text-center py-3">No {label} available.</div>
   );
 
   const filteredByUnit = (data) =>
-    data.filter((item) => item.unit?.trim() === activeUnit);
+    data.filter((item) => (item.unit || "").trim() === activeUnit);
 
-  const filteredEbooks = filteredByUnit(ebooks);
-  const filteredVideos = filteredByUnit(videos);
   const filteredWebResources = filteredByUnit(webresources);
   const filteredFAQ = filteredByUnit(faq);
-  const filteredMisconceptions = filteredByUnit(misconceptions);
   const filteredPracticeAssignment = filteredByUnit(practiceassignment);
   const filteredStudyGuide = filteredByUnit(studyguide);
+
+  const getProgressColor = (p) =>
+    p < 30 ? "#e74c3c" : p < 70 ? "#f39c12" : "#27ae60";
 
   return (
     <div id="main_content" className="font-muli theme-blush">
@@ -393,592 +630,536 @@ function InstructorCourseViewPage() {
       <LeftSidebar role="Instructor" />
 
       <div className="section-wrapper">
-      <div className="page admin-dashboard">
-        <div className="section-body mt-0 pt-0"></div>
-        <div className="container-fluid">
-          <div className="jumbotron bg-light rounded shadow-sm mb-3 welcome-card dashboard-hero">
-            <div className="d-flex justify-content-between align-items-center mb-0">
-              <div style={{ width: "180px" }}></div>
-              <h2 className="page-title text-primary pt-0 dashboard-hero-title">View Course Content</h2>
-              <a
-                href="/my-courseware"
-                className="btn btn-outline-primary mt-1 mt-md-0"
-              >
-                <i className="fa fa-arrow-left mr-1"></i> Back to Courseware
-              </a>
-            </div>
-            <h5 className="text-muted mb-0 dashboard-hero-sub">
-              <strong>{`${batchName} - ${semester} - ${courseCode} - ${courseName} - Exam Id ${examId}`}</strong>
-            </h5>
-          </div>
-
-          {/* Unit Tabs */}
-          <div className="unit-tabs mb-4">
-            {allUnits.map((unit) => {
-              const titleForUnit =
-                ebooks.find((ebook) => ebook.unit?.trim() === unit)?.title ||
-                "No title found";
-
-              return (
-                <button
-                  key={unit}
-                  className={`unit-tab ${activeUnit === unit ? "active" : ""}`}
-                  onClick={() => setActiveUnit(unit)}
-                  title={`${titleForUnit}`}
-                >
-                  {unit}
-                </button>
-              );
-            })}
-
-            {/* ---- THIS IS THE CHANGE: Pass both examinationId and unitId ---- */}
-            <Link
-              to="/discussionforum"
-              state={{
-                examinationId: parseInt(courseId),
-                unitId: activeUnit ? Number(activeUnit.split("-")[1]) : null, // <-- just the number, e.g. 1 from "UNIT-1"
-              }}
-            >
-              <button className="unit-tab">Discussion Forum</button>
-            </Link>
-            {/* ------------ */}
-
-            <Link to="/casestudy">
-              <button className="unit-tab">Case Study</button>
-            </Link>
-
-            <Link to="/recorded-classes">
-              <button className="unit-tab">Recorded classes</button>
-            </Link>
-
-          </div>
-
-          {activeUnit && (
-            <div className="d-flex justify-content-between align-items-center mb-3 px-1">
-              <h5 className="mb-0">
-                <i className="fa fa-book text-primary me-2 mr-2"></i> Unit Title:{" "}
-                {filteredEbooks[0]?.title || "No title found"}
-              </h5>
-              {role !== "Student" && (
-                <Link
-                  to="/add-objective-subjective-assignment"
-                  state={{
-                    unitId: activeUnit,
-                    batchName,
-                    semester,
-                    courseCode,
-                    courseName,
-                    examinationID: examId,
-                  }}
-                >
-                  <button className="btn btn-outline-primary">
-                    <i className="fa fa-plus me-1"></i> Add Practice Test
-                  </button>
-                </Link>
-              )}
-            </div>
-          )}
-
-          {/* Section Mapping */}
-          {[
-            {
-              title: "Videos",
-              key: "videos",
-              data: filteredVideos,
-              ref: sectionRefs.videos,
-              color: "info",
-              icon: "fas fa-video",
-            },
-            {
-              title: "EBOOK Materials",
-              key: "ebooks",
-              data: filteredEbooks,
-              ref: sectionRefs.ebooks,
-              color: "primary",
-              icon: "fas fa-file-pdf",
-            },
-            {
-              title: "Web Resources Materials",
-              key: "webresources",
-              data: filteredWebResources,
-              ref: sectionRefs.webresources,
-              color: "primary",
-              icon: "fas fa-file-pdf",
-            },
-            {
-              title: "Pre-Learning : FAQ",
-              key: "faq",
-              data: filteredFAQ,
-              ref: sectionRefs.faq,
-              color: "primary",
-              icon: "fas fa-file-pdf",
-            },
-            {
-              title: "Pre-Learning : Misconceptions",
-              key: "misconceptions",
-              data: filteredMisconceptions,
-              ref: sectionRefs.misconceptions,
-              color: "primary",
-              icon: "fas fa-file-pdf",
-            },
-            {
-              title: "Practice Assignment",
-              key: "practiceassignment",
-              data: filteredPracticeAssignment,
-              ref: sectionRefs.practiceassignment,
-              color: "primary",
-              icon: "fas fa-file-pdf",
-            },
-            {
-              title: "Study Guide",
-              key: "studyguide",
-              data: filteredStudyGuide,
-              ref: sectionRefs.studyguide,
-              color: "primary",
-              icon: "fas fa-file-pdf",
-            },
-          ].map((section, idx) => (
-            <div
-              key={idx}
-              ref={section.ref}
-              className={`card shadow-sm mb-4 section-card animate-section border-${section.color}`}
-            >
-              <div className={`card-header bg-${section.color} text-white`}>
-                <h6 className="mb-0">
-                  <i className={`${section.icon} me-2 mr-2`}></i>
-                  {section.title}
-                </h6>
+        <div className="page admin-dashboard pt-0">
+          <div className="section-body mt-3 pt-0">
+            <div className="container-fluid">
+              <div className="jumbotron bg-light rounded shadow-sm mb-3 welcome-card dashboard-hero">
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <div style={{ width: "150px" }}></div>
+                  <h2 className="page-title text-primary pt-0 dashboard-hero-title">
+                    View Course Content
+                  </h2>
+                  <a
+                    href="/my-courseware"
+                    className="btn btn-outline-primary mt-3 mt-md-0"
+                  >
+                    <i className="fa fa-arrow-left mr-1"></i> Back to Courseware
+                  </a>
+                </div>
+                <h5 className="text-muted mb-0 mt-0 dashboard-hero-sub">
+                  <strong>{`${batchName} - ${className} - ${courseCode} - ${courseName} `}</strong>
+                </h5>
               </div>
-              <div className="card-body">
-                {section.data.length === 0 ? (
-                  renderEmptyMessage(section.title)
-                ) : (
-                  <div className="row">
-                    {section.data.map((item, idx2) => {
-                      // Progress key per section
-                      let progressKey = '';
-                      if (section.key === "videos") {
-                        progressKey = `video-progress-http://localhost:5129${item.fileUrl}`;
-                      } else if (section.key === "ebooks") {
-                        progressKey = `ebook-progress-http://localhost:5129${item.fileUrl}`;
-                      } else if (section.key === "webresources") {
-                        progressKey = `webresource-progress-http://localhost:5129${item.fileUrl}`;
-                      } else if (section.key === "faq") {
-                        progressKey = `faq-progress-http://localhost:5129${item.fileUrl}`;
-                      } else if (section.key === "misconceptions") {
-                        progressKey = `misconception-progress-http://localhost:5129${item.fileUrl}`;
-                      } else if (section.key === "practiceassignment") {
-                        progressKey = `practiceassignment-progress-http://localhost:5129${item.fileUrl}`;
-                      } else if (section.key === "studyguide") {
-                        progressKey = `studyguide-progress-http://localhost:5129${item.fileUrl}`;
-                      } else if (section.key === "liveclass") {
-                        progressKey = `liveclass-progress-http://localhost:5129${item.fileUrl}`;
-                      } else if (section.key === "assignments") {
-                        progressKey = `assignment-progress-http://localhost:5129${item.fileUrl}`;
-                      } else if (section.key === "exams") {
-                        progressKey = `exam-progress-http://localhost:5129${item.fileUrl}`;
-                      } else if (section.key === "discussionforum") {
-                        progressKey = `discussion-progress-http://localhost:5129${item.fileUrl}`;
-                      }
-                      let progress = parseInt(localStorage.getItem(progressKey)) || 0;
-                      let progressColor = progress < 30 ? "#e74c3c" : progress < 70 ? "#f39c12" : "#27ae60";
-                      return (
-                        <div className="col-md-6 col-lg-4 mb-3" key={idx2}>
-                          <div className="resource-card welcome-card animate-welcome h-100">
-                            <div className="card-body d-flex flex-column">
-                              <h6 className="fw-bold">{item.title}</h6>
-                              <p className="text-muted flex-grow-1">
-                                {item.description}
-                              </p>
-                              {/* Progress bar for all resource types */}
-                              {section.key === "videos" ? (
-                                <>
-                                  <button
-                                    className="btn btn-sm btn-outline-info mt-auto"
-                                    onClick={() => handleWatchVideo(item.fileUrl)}
-                                  >
-                                    Watch Video
-                                  </button>
-                                </>
-                              ) : (
+            </div>
+
+            {/* Unit Tabs */}
+            <div className="unit-tabs mb-4">
+              {allUnits.map((unit) => {
+                const titleForUnit = unitTitleByUnit[unit] || "No title found";
+                return (
+                  <button
+                    key={unit}
+                    className={`unit-tab ${
+                      activeUnit === unit ? "active" : ""
+                    }`}
+                    onClick={() => setActiveUnit(unit)}
+                    title={`${titleForUnit}`}
+                  >
+                    {unit}
+                  </button>
+                );
+              })}
+
+              <Link
+                to="/discussionforum"
+                state={{
+                  examinationId: parseInt(courseId),
+                  unitId: activeUnit
+                    ? Number(String(activeUnit).split("-")[1])
+                    : null,
+                }}
+              >
+                <button className="unit-tab">Discussion Forum</button>
+              </Link>
+
+              <Link to="/recorded-classes">
+                <button className="unit-tab">Recorded classes</button>
+              </Link>
+            </div>
+
+            {activeUnit && (
+              <div className="d-flex justify-content-between align-items-center mb-3 px-1">
+                <h5 className="mb-0">
+                  <i className="fa fa-book text-primary me-2 mr-2"></i> Unit
+                  Title: {unitTitleByUnit[activeUnit] || "No title found"}
+                </h5>
+                {(role === "Admin" || role === "Faculty") && (
+                  <Link
+                    to="/add-objective-subjective-assignment"
+                    state={{
+                      unitId: activeUnit,
+                      batchName,
+                      semester,
+                      courseCode,
+                      courseName,
+                      examinationID: examId,
+                    }}
+                  >
+                    <button className="btn btn-outline-primary">
+                      <i className="fa fa-plus me-1"></i> Add Practice Test
+                    </button>
+                  </Link>
+                )}
+              </div>
+            )}
+
+            {/* Sections with progress */}
+            {[
+              {
+                title: "Web Resources Materials",
+                key: "webresources",
+                data: filteredWebResources,
+                ref: sectionRefs.webresources,
+                color: "primary",
+                icon: "fas fa-file",
+              },
+              {
+                title: "Pre-Learning : FAQ",
+                key: "faq",
+                data: filteredFAQ,
+                ref: sectionRefs.faq,
+                color: "primary",
+                icon: "fas fa-question-circle",
+              },
+              {
+                title: "Practice Assignment",
+                key: "practiceassignment",
+                data: filteredPracticeAssignment,
+                ref: sectionRefs.practiceassignment,
+                color: "primary",
+                icon: "fas fa-tasks",
+              },
+              {
+                title: "Study Guide",
+                key: "studyguide",
+                data: filteredStudyGuide,
+                ref: sectionRefs.studyguide,
+                color: "primary",
+                icon: "fas fa-book",
+              },
+            ].map((section) => (
+              <div
+                key={section.key}
+                ref={section.ref}
+                className={`card shadow-sm mb-4 section-card animate-section border-${section.color}`}
+              >
+                <div className={`card-header bg-${section.color} text-white`}>
+                  <h6 className="mb-0">
+                    <i className={`${section.icon} me-2 mr-2`}></i>
+                    {section.title}
+                  </h6>
+                </div>
+                <div className="card-body">
+                  {section.data.length === 0 ? (
+                    renderEmptyMessage(section.title)
+                  ) : (
+                    <div className="row">
+                      {section.data.map((item, idx2) => {
+                        const { value: progress } = getProgressForItem(
+                          section.key,
+                          item
+                        );
+                        const progressColor = getProgressColor(progress);
+
+                        const idKey =
+                          item.id ??
+                          item.contentId ??
+                          item.examid ??
+                          `${section.key}-${idx2}`;
+                        const thisItemId =
+                          item.id ?? item.contentId ?? item.Id ?? item.ContentId;
+
+                        return (
+                          <div
+                            className="col-md-6 col-lg-4 mb-3"
+                            key={`${idKey}-${progressVersion}`}
+                          >
+                            <div
+                              className="resource-card welcome-card animate-welcome h-100"
+                              style={{ position: "relative" }}
+                            >
+                              {(role === "Admin" || role === "Faculty") && (
+                                <button
+                                  type="button"
+                                  className="delete-btn text-danger btn btn-link p-0"
+                                  title="Delete content"
+                                  onClick={(e) =>
+                                    handleDeleteContent(item, e)
+                                  }
+                                  disabled={deletingId === thisItemId}
+                                  aria-label="Delete content"
+                                  style={{ lineHeight: 0 }}
+                                >
+                                  <i
+                                    className="fa fa-trash"
+                                    aria-hidden="true"
+                                  ></i>
+                                </button>
+                              )}
+
+                              <div className="card-body d-flex flex-column">
+                                <h6 className="fw-bold">{item.title}</h6>
+                                <p className="text-muted flex-grow-1">
+                                  {item.description}
+                                </p>
+
                                 <button
                                   className="btn btn-sm btn-outline-primary mt-auto"
-                                  onClick={() => handleViewFile(item.fileUrl)}
+                                  onClick={() =>
+                                    handleViewFile(section.key, item)
+                                  }
                                 >
                                   View File
                                 </button>
-                              )}
-                              <div style={{ marginTop: "12px" }}>
-                                <div style={{ fontSize: "0.95rem", marginBottom: "2px" }}>
-                                  <span>{section.title} Progress: </span>
-                                  <span style={{ color: progressColor, fontWeight: 600 }}>{progress}%</span>
-                                </div>
-                                <div style={{
-                                  width: "100%",
-                                  height: "8px",
-                                  background: "#eee",
-                                  borderRadius: "6px",
-                                  overflow: "hidden"
-                                }}>
-                                  <div style={{
-                                    width: `${progress}%`,
-                                    height: "100%",
-                                    background: progressColor,
-                                    transition: "width 0.5s"
-                                  }}></div>
+
+                                {/* Progress bar, same style as earlier page */}
+                                <div style={{ marginTop: "12px" }}>
+                                  <div
+                                    style={{
+                                      fontSize: "0.95rem",
+                                      marginBottom: "2px",
+                                    }}
+                                  >
+                                    <span> Progress: </span>
+                                    <span
+                                      style={{
+                                        color: progressColor,
+                                        fontWeight: 600,
+                                      }}
+                                    >
+                                      {progress}%
+                                    </span>
+                                  </div>
+                                  <div
+                                    style={{
+                                      width: "100%",
+                                      height: "8px",
+                                      background: "#eee",
+                                      borderRadius: "6px",
+                                      overflow: "hidden",
+                                    }}
+                                  >
+                                    <div
+                                      style={{
+                                        width: `${progress}%`,
+                                        height: "100%",
+                                        background: progressColor,
+                                        transition: "width 0.5s",
+                                      }}
+                                    ></div>
+                                  </div>
                                 </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
 
-        {role === "Student" ? (
-         <div className="container-fluid">
-  <div className="card shadow-sm mb-5 section-card animate-section border-info">
-    <div className="card-header bg-info text-white">
-      <h6 className="mb-0">
-        <i className="fa fa-tools me-2 mr-2"></i> Student Practice Exams
-      </h6>
-    </div>
-
-    <div className="card-body">
-      {practiceExams.length === 0 ? (
-        <div className="text-muted text-center py-3">
-          No practice exams available.
-        </div>
-      ) : (
-        <div className="row">
-          {practiceExams.map((exam, idx) => {
-            const isSubjective = exam.examType?.toUpperCase() === "DP";
-            const isAttendStatus =
-              exam.examStatus?.toLowerCase() === "attendexam";
-            const isMCQ = exam.examType === "MP";
-
-            return (
-              <div className="col-md-6 col-lg-4 mb-3" key={exam.examid}>
-                <div className="resource-card welcome-card animate-welcome h-100">
-                  <div
-                    className="card-body d-flex flex-column"
-                    style={{ textAlign: "left", gap: "6px" }}
-                  >
-                    <h6 className="fw-bold text-dark mb-2 d-flex align-items-center gap-2">
-                      <i className="fa fa-book text-primary mr-2"></i>
-                      {exam.title}
+            {/* Student vs Admin Practice sections – unchanged */}
+            {role === "Student" || role === "College" ? (
+              <div className="container-fluid">
+                <div className="card shadow-sm mb-5 section-card animate-section border-info">
+                  <div className="card-header bg-info text-white">
+                    <h6 className="mb-0">
+                      <i className="fa fa-tools me-2 mr-2"></i> Student Practice
+                      Exams
                     </h6>
+                  </div>
 
-                    <p className="mb-2">
-                      <i className="fa fa-calendar-plus me-2 mr-2 text-success"></i>
-                      <strong>Created At:</strong>{" "}
-                      {new Date(exam.createdAt).toLocaleString()}
-                    </p>
+                  <div className="card-body">
+                    {practiceExams.length === 0 ? (
+                      <div className="text-muted text-center py-3">
+                        No practice exams available.
+                      </div>
+                    ) : (
+                      <div className="row">
+                        {practiceExams.map((exam) => {
+                          const isSubjective =
+                            (exam.examType || "").toUpperCase() === "DP";
+                          const isAttendStatus =
+                            (exam.examStatus || "").toLowerCase() ===
+                            "attendexam";
+                          const isMCQ = exam.examType === "MP";
 
-                    <p className="mb-2">
-                      <i className="fa fa-clock me-2 mr-2 text-primary"></i>
-                      <strong>Duration:</strong> {exam.durationMinutes} min
-                    </p>
+                          return (
+                            <div
+                              className="col-md-6 col-lg-4 mb-3"
+                              key={exam.examid}
+                            >
+                              <div className="resource-card welcome-card animate-welcome h-100">
+                                <div
+                                  className="card-body d-flex flex-column"
+                                  style={{
+                                    textAlign: "left",
+                                    gap: "6px",
+                                  }}
+                                >
+                                  <h6 className="fw-bold text-dark mb-2 d-flex align-items-center gap-2">
+                                    <i className="fa fa-book text-primary mr-2"></i>
+                                    {exam.title}
+                                  </h6>
 
-                    <p className="mb-2">
-                      <i className="fa fa-star me-2 mr-2 text-warning"></i>
-                      <strong>Marks:</strong> {exam.totmrk} |{" "}
-                      <strong>Pass:</strong> {exam.passmrk}
-                    </p>
+                                  <p className="mb-2">
+                                    <i className="fa fa-calendar-plus me-2 mr-2 text-success"></i>
+                                    <strong>Created At:</strong>{" "}
+                                    {new Date(
+                                      exam.createdAt
+                                    ).toLocaleString()}
+                                  </p>
 
-                    <p className="mb-2">
-                      <i className="fa fa-layer-group me-2 mr-2 text-secondary"></i>
-                      <strong>Unit:</strong> {exam.unitId}
-                    </p>
+                                  <p className="mb-2">
+                                    <i className="fa fa-clock me-2 mr-2 text-primary"></i>
+                                    <strong>Duration:</strong>{" "}
+                                    {exam.durationMinutes} min
+                                  </p>
 
-                    {exam.fileurl ? (
-                      <a
-                        href={`http://localhost:5129${exam.fileurl}`}
-                        className="btn btn-sm btn-outline-primary"
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        📄 View Attachment
-                      </a>
-                    ) : !isMCQ ? (
-                      <button
-                        className="btn btn-sm btn-outline-secondary"
-                        disabled
-                      >
-                        🚫 No Attachment
-                      </button>
-                    ) : null}
+                                  <p className="mb-2">
+                                    <i className="fa fa-star me-2 mr-2 text-warning"></i>
+                                    <strong>Marks:</strong> {exam.totmrk} |{" "}
+                                    <strong>Pass:</strong> {exam.passmrk}
+                                  </p>
 
-                    {isMCQ && isAttendStatus && (
-                      <Link
-                        to={`/practice-exam/${exam.examid}`}
-                        state={{ exam }}
-                        className="mt-2"
-                      >
-                        <button className="btn btn-sm btn-success w-100">
-                          📝 Attend Practice Exam
-                        </button>
-                      </Link>
-                    )}
+                                  <p className="mb-2">
+                                    <i className="fa fa-layer-group me-2 mr-2 text-secondary"></i>
+                                    <strong>Unit:</strong> {exam.unitId}
+                                  </p>
 
-                    {isSubjective && isAttendStatus && userId && (
-                      <input
-                        type="file"
-                        accept=".pdf"
-                        onChange={(e) =>
-                          submitSubjectivePracticeExam(
-                            exam.examid,
-                            userId,
-                            e.target.files[0]
-                          )
-                        }
-                        className="form-control mt-2"
-                      />
+                                  {exam.fileurl ? (
+                                    <a
+                                      href={toAbsoluteLocal(
+                                        apiOrigin,
+                                        exam.fileurl
+                                      )}
+                                      className="btn btn-sm btn-outline-primary"
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      onClick={() =>
+                                        log("Opening exam attachment", {
+                                          url: toAbsoluteLocal(
+                                            apiOrigin,
+                                            exam.fileurl
+                                          ),
+                                        })
+                                      }
+                                    >
+                                      📄 View Attachment
+                                    </a>
+                                  ) : !isMCQ ? (
+                                    <button
+                                      className="btn btn-sm btn-outline-secondary"
+                                      disabled
+                                    >
+                                      🚫 No Attachment
+                                    </button>
+                                  ) : null}
+
+                                  {isMCQ && isAttendStatus && (
+                                    <Link
+                                      to={`/practice-exam/${exam.examid}`}
+                                      state={{ exam }}
+                                      className="mt-2"
+                                    >
+                                      <button className="btn btn-sm btn-success w-100">
+                                        📝 Attend Practice Exam
+                                      </button>
+                                    </Link>
+                                  )}
+
+                                  {isSubjective && isAttendStatus && (
+                                    <input
+                                      type="file"
+                                      accept=".pdf"
+                                      onChange={(e) => {
+                                        const f = e.target.files?.[0];
+                                        if (f && userId) {
+                                          const token =
+                                            localStorage.getItem("jwt");
+                                          const url = `${API_BASE_URL}/ExamSubmissions/PracticeExamSubjective?ExamId=${exam.examid}&studentId=${userId}`;
+                                          const formData = new FormData();
+                                          formData.append("file", f);
+                                          fetch(url, {
+                                            method: "POST",
+                                            body: formData,
+                                            headers: {
+                                              Authorization: `Bearer ${token}`,
+                                            },
+                                          })
+                                            .then(async (r) => {
+                                              const t = await r.text();
+                                              if (!r.ok) throw new Error(t);
+                                              alert(
+                                                "✅ Subjective practice exam submitted successfully!"
+                                              );
+                                            })
+                                            .catch((err) => {
+                                              error(
+                                                "Failed to submit subjective practice exam",
+                                                err
+                                              );
+                                              alert(
+                                                "❌ Failed to submit subjective practice exam."
+                                              );
+                                            });
+                                        }
+                                      }}
+                                      className="form-control mt-2"
+                                    />
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
                 </div>
               </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  </div>
-</div>
-
-        ) : (
-          <div className="container-fluid">
-            <div className="card shadow-sm mb-5 section-card animate-section border-info">
-              <div className="card-header bg-info text-white">
-                <h6 className="mb-0">
-                  <i className="fa fa-tools me-2 mr-2"></i> View Practice Tests
-                </h6>
-              </div>
-
-              <div className="card-body">
-                {adminPracticeTests.length === 0 ? (
-                  <div className="text-muted text-center py-3">
-                    No practice test records found.
+            ) : (
+              <div className="container-fluid">
+                <div className="card shadow-sm mb-5 section-card animate-section border-info">
+                  <div className="card-header bg-info text-white">
+                    <h6 className="mb-0">
+                      <i className="fa fa-tools me-2 mr-2"></i> View Practice
+                      Tests
+                    </h6>
                   </div>
-                ) : (
-                  <div className="row">
-                    {adminPracticeTests.map((test, idx) => {
-                      const isObjective =
-                        (test.PracticeExamType || "").toLowerCase() ===
-                        "objective";
-                      const isSubjective =
-                        (test.PracticeExamType || "").toLowerCase() ===
-                        "subjective";
 
-                      const typeBadge = isObjective ? (
-                        <span className="badge bg-primary text-white px-2 py-1 rounded-pill">
-                          <i className="fa fa-list me-1"></i> Objective
-                        </span>
-                      ) : isSubjective ? (
-                        <span className="badge bg-warning text-dark px-2 py-1 rounded-pill">
-                          <i className="fa fa-file-alt me-1"></i> Subjective
-                        </span>
-                      ) : (
-                        <span className="badge bg-secondary text-white px-2 py-1 rounded-pill">
-                          {test.PracticeExamType}
-                        </span>
-                      );
+                  <div className="card-body">
+                    {adminPracticeTests.length === 0 ? (
+                      <div className="text-muted text-center py-3">
+                        No practice test records found.
+                      </div>
+                    ) : (
+                      <div className="row">
+                        {adminPracticeTests.map((test) => {
+  const isObjective =
+    (test.PracticeExamType || "").toLowerCase() === "objective";
+  const isSubjective =
+    (test.PracticeExamType || "").toLowerCase() === "subjective";
 
-                      return (
-                        <div
-                          className="col-md-6 col-lg-4 mb-3"
-                          key={test.examid}
-                        >
-                          <div className="resource-card welcome-card animate-welcome h-100">
-                            <div
-                              className="card-body d-flex flex-column"
-                              style={{ textAlign: "left", gap: "6px" }}
-                            >
-                              <h6 className="fw-bold text-dark mb-2 d-flex align-items-center gap-2">
-                                <i className="fa fa-book text-primary"></i>
-                                {test.AssignmentTitle}
-                              </h6>
+  const typeBadge = isObjective ? (
+    <span className="badge bg-primary text-white px-2 py-1 rounded-pill">
+      <i className="fa fa-list me-1"></i> Objective
+    </span>
+  ) : isSubjective ? (
+    <span className="badge bg-warning text-dark px-2 py-1 rounded-pill">
+      <i className="fa fa-file-alt me-1"></i> Subjective
+    </span>
+  ) : (
+    <span className="badge bg-secondary text-white px-2 py-1 rounded-pill">
+      {test.PracticeExamType}
+    </span>
+  );
 
-                              <p className="mb-2">
-                                <i className="fa fa-user me-2 mr-2 text-dark"></i>
-                                {test.pname}
-                              </p>
+  const testId = test.examid ?? test.id ?? test.Id;
 
-                              <p className="mb-2">
-                                <i className="fa fa-layer-group me-2 mr-2 text-secondary"></i>
-                                <strong>Unit:</strong> {activeUnit}
-                              </p>
+  return (
+    <div
+      className="col-md-6 col-lg-4 mb-3"
+      key={test.examid}
+    >
+      <div className="resource-card welcome-card animate-welcome h-100">
+        {/* make card relative so delete icon can be absolutely positioned */}
+        <div
+          className="card-body d-flex flex-column"
+          style={{ textAlign: "left", gap: "6px", position: "relative" }}
+        >
+          {/* 🔴 DELETE ICON (ADMIN) */}
+          <button
+            type="button"
+            className="btn btn-link text-danger p-0"
+            style={{
+              position: "absolute",
+              top: "6px",
+              right: "8px",
+              lineHeight: 1,
+            }}
+            title="Delete practice test"
+            onClick={(e) => handleDeletePracticeTest(test, e)}
+            disabled={deletingPracticeId === testId}
+          >
+            <i className="fa fa-trash" aria-hidden="true"></i>
+          </button>
 
-                              <p className="mb-2">
-                                <i className="fa fa-clock me-2 mr-2 text-primary"></i>
-                                <strong>Duration:</strong> {test.Duration} min
-                              </p>
+          <h6 className="fw-bold text-dark mb-2 d-flex align-items-center gap-2">
+            <i className="fa fa-book text-primary"></i>
+            {test.AssignmentTitle}
+          </h6>
 
-                              <p className="mb-2">
-                                <i className="fa fa-star me-2 mr-2 text-warning"></i>
-                                <strong>Marks:</strong> {test.totmrk} |{" "}
-                                <strong>Pass:</strong> {test.passmrk}
-                              </p>
+          <p className="mb-2">
+            <i className="fa fa-user me-2 mr-2 text-dark"></i>
+            {test.pname}
+          </p>
+          <p className="mb-2">
+            <i className="fa fa-layer-group me-2 mr-2 text-secondary"></i>
+            <strong>Unit:</strong> {activeUnit}
+          </p>
+          <p className="mb-2">
+            <i className="fa fa-clock me-2 mr-2 text-primary"></i>
+            <strong>Duration:</strong> {test.Duration} min
+          </p>
+          <p className="mb-2">
+            <i className="fa fa-star me-2 mr-2 text-warning"></i>
+            <strong>Marks:</strong> {test.totmrk} |{" "}
+            <strong>Pass:</strong> {test.passmrk}
+          </p>
+          <p className="mb-2">
+            <i className="fa fa-check-circle me-2 mr-2 text-success"></i>
+            <strong>Attempted:</strong> {test.attempted ? "Yes" : "No"}
+          </p>
+          <p className="mb-2">
+            <i className="fa fa-calendar-alt me-2 mr-2 text-danger"></i>
+            <strong>From:</strong>{" "}
+            {new Date(test.StartDate).toLocaleDateString()}{" "}
+            - {new Date(test.EndDate).toLocaleDateString()}
+          </p>
 
-                              <p className="mb-2">
-                                <i className="fa fa-check-circle me-2 mr-2 text-success"></i>
-                                <strong>Attempted:</strong>{" "}
-                                {test.attempted ? "Yes" : "No"}
-                              </p>
-
-                              <p className="mb-2">
-                                <i className="fa fa-calendar-alt me-2 mr-2 text-danger"></i>
-                                <strong>From:</strong>{" "}
-                                {new Date(test.StartDate).toLocaleDateString()}{" "}
-                                - {new Date(test.EndDate).toLocaleDateString()}
-                              </p>
-
-                              <div className="mt-auto text-end">
-                                {typeBadge}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
+          <div className="mt-auto text-end">
+            {typeBadge}
           </div>
-        )}
+        </div>
       </div>
+    </div>
+  );
+})}
+
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
+
+      {/* Viewer modal (any file) */}
+      <UniversalFileViewerModal
+        show={viewerShow}
+        onHide={handleViewerHide}
+        fileUrl={viewerUrl}
+        apiOrigin={apiOrigin}
+        jwt={jwt}
+        title="View File"
+      />
 
       <Footer />
-
-      <Modal show={showVideoModal} onHide={handleCloseVideo} centered size="lg">
-        <Modal.Header closeButton>
-          <Modal.Title>Video Playback</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <video
-            controls
-            controlsList="nodownload"
-            disablePictureInPicture
-            onContextMenu={(e) => e.preventDefault()}
-            width="100%"
-              onTimeUpdate={e => {
-                const video = e.target;
-                if (video.duration > 0) {
-                  const percent = Math.round((video.currentTime / video.duration) * 100);
-
-                // Get stored progress
-                const storedProgress = parseInt(localStorage.getItem(`video-progress-${videoUrl}`)) || 0;
-
-                // keep the max value
-                const updatedProgress = Math.max(percent, storedProgress);
-
-                setCurrentVideoProgress(updatedProgress);
-                localStorage.setItem(`video-progress-${videoUrl}`, updatedProgress);
-                }
-              }}
-              onLoadedMetadata={e => {
-                // Seek to last watched position
-                const video = e.target;
-                const percent = parseInt(localStorage.getItem(`video-progress-${videoUrl}`)) || 0;
-                if (video.duration > 0 && percent > 0) {
-                  video.currentTime = (percent / 100) * video.duration;
-                }
-              }}
-          >
-            <source src={videoUrl} type="video/mp4" />
-            Your browser does not support HTML5 video.
-          </video>
-            {/* Video progress bar below video */}
-            <div style={{ marginTop: "16px" }}>
-              <div style={{ fontSize: "0.95rem", marginBottom: "2px" }}>
-                <span>Video Progress: </span>
-                <span style={{ color: currentVideoProgress < 30 ? "#e74c3c" : currentVideoProgress < 70 ? "#f39c12" : "#27ae60", fontWeight: 600 }}>{currentVideoProgress}%</span>
-              </div>
-              <div style={{
-                width: "100%",
-                height: "8px",
-                background: "#eee",
-                borderRadius: "6px",
-                overflow: "hidden"
-              }}>
-                <div style={{
-                  width: `${currentVideoProgress}%`,
-                  height: "100%",
-                  background: currentVideoProgress < 30 ? "#e74c3c" : currentVideoProgress < 70 ? "#f39c12" : "#27ae60",
-                  transition: "width 0.5s"
-                }}></div>
-              </div>
-            </div>
-        </Modal.Body>
-      </Modal>
-
-      <Modal show={showFileModal} onHide={handleCloseFile} centered size="lg">
-        <Modal.Header closeButton>
-          <Modal.Title>View PDF</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Document
-            file={fileUrl}
-            onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-          >
-            <Page pageNumber={pageNumber} width={600} />
-          </Document>
-
-          {numPages && (
-            <div className="d-flex justify-content-between mt-3">
-              <button
-                className="btn btn-sm btn-outline-secondary"
-                disabled={pageNumber <= 1}
-                onClick={() => handlePageChange(pageNumber - 1)}
-              >
-                Prev
-              </button>
-              <span>
-                Page {pageNumber} of {numPages}
-              </span>
-              <button
-                className="btn btn-sm btn-outline-secondary"
-                disabled={pageNumber >= numPages}
-                onClick={() => handlePageChange(pageNumber + 1)}
-              >
-                Next
-              </button>
-            </div>
-          )}
-
-          {/* File progress */}
-          <div style={{ marginTop: "16px" }}>
-            <div style={{ fontSize: "0.95rem", marginBottom: "2px" }}>
-              <span>File Progress: </span>
-              <span style={{ color: fileProgress < 30 ? "#e74c3c" : fileProgress < 70 ? "#f39c12" : "#27ae60", fontWeight: 600 }}>
-                {fileProgress}%
-              </span>
-            </div>
-            <div style={{
-              width: "100%",
-              height: "8px",
-              background: "#eee",
-              borderRadius: "6px",
-              overflow: "hidden"
-            }}>
-              <div style={{
-                width: `${fileProgress}%`,
-                height: "100%",
-                background: fileProgress < 30 ? "#e74c3c" : fileProgress < 70 ? "#f39c12" : "#27ae60",
-                transition: "width 0.5s"
-              }}></div>
-            </div>
-          </div>
-        </Modal.Body>
-      </Modal>
-
     </div>
   );
 }

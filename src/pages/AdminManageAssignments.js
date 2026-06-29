@@ -133,10 +133,10 @@ function AdminManageAssignments() {
       <HeaderTop />
       <RightSidebar />
       <LeftSidebar />
-
+      
       <div className="section-wrapper">
       <div className="page admin-dashboard">
-        <div className="section-body mt-0 pt-0">
+        <div className="section-body mt-3 pt-0">
           <div className="container-fluid">
             <div className="jumbotron bg-light rounded shadow-sm mb-3 welcome-card dashboard-hero">
               <h2 className="page-title text-primary pt-0 dashboard-hero-title">
@@ -188,7 +188,7 @@ function AdminManageAssignments() {
                     </div>
 
                     <Collapse in={!!openSemester[semesterKey]}>
-                      <div className="mt-2 semester-panel-body">
+                      <div className="mt-2">
                         {Object.entries(papers).map(
                           ([paperName, assignmentList], pIndex) => {
                             const paperKey = `${sIndex}-${pIndex}`;
@@ -389,7 +389,7 @@ function AdminManageAssignments() {
         </Modal.Footer>
       </Modal>
 
-      <Footer />
+       
     </div>
   );
 }

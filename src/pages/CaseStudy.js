@@ -15,9 +15,12 @@ function CaseStudy() {
       <HeaderTop />
       <RightSidebar />
       <LeftSidebar />
-
+      
       <div className="section-wrapper">
-      <div className="page admin-dashboard">
+      <div className="page admin-dashboard pt-0">
+        <div className="section-body mt-3 pt-0">
+          <div className="container-fluid">
+
      <div className="jumbotron bg-light rounded shadow-sm mb-3 welcome-card dashboard-hero">
             <div className="d-flex justify-content-between align-items-center mb-0">
               <div style={{ width: "100px" }}></div>
@@ -26,7 +29,7 @@ function CaseStudy() {
               </h2>
               <button
                 onClick={() => navigate(-1)}
-                className="btn btn-outline-primary mt-1 mt-md-0"
+                className="btn btn-outline-primary mt-3 mt-md-0"
               >
                 <i className="fa fa-arrow-left mr-1"></i> Back
               </button>
@@ -35,11 +38,11 @@ function CaseStudy() {
               Explore detailed case studies related to the course topics.
             </p>
           </div>
-
-        <Footer />
+           </div>
+        </div>
+         
       </div>
       </div>
-
     </div>
   );
 }

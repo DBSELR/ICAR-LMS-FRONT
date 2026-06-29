@@ -108,14 +108,14 @@ function Departments() {
       <LeftSidebar role="Admin" />
 
       <div className="section-wrapper">
-      <div className="page admin-dashboard">
-        <div className="section-body mt-0 pt-0">
+        <div className="page departments-page">
+        <div className="section-body mt-3 pt-0">
           <div className="container-fluid">
-            <div className="jumbotron bg-light rounded shadow-sm mb-3 welcome-card dashboard-hero">
-              <h2 className="page-title text-primary pt-0 dashboard-hero-title">
+            <div className="jumbotron bg-light p-0 rounded shadow-sm mb-3 welcome-card animate-welcome">
+              <h2 className="page-title text-primary pt-0">
                 <FaUniversity className="me-2 mb-1" /> Manage Departments
               </h2>
-              <p className="text-muted mb-0 dashboard-hero-sub">
+              <p className="text-muted mb-0">
                 Add, edit, and manage department information easily
               </p>
             </div>
@@ -213,7 +213,7 @@ function Departments() {
           </div>
         </div>
 
-        <Footer />
+         
 
         {showModal && (
           <DepartmentFormModal
@@ -224,6 +224,7 @@ function Departments() {
           />
         )}
       </div>
+
       </div>
 
     </div>

@@ -16,10 +16,16 @@ function AdminDashboard() {
     programmes: 0,
     books: 0,
     exams: 0,
-    assignments:0,
+    assignments: 0,
     liveClasses: 0,
     tasks: 0,
-    leaves: 0
+    leaves: 0,
+    contentReadPercentPerBatch: 0,
+    liveClassAttendancePercentPerBatch: 0,
+    objectiveExamAttendancePercentPerBatch: 0,
+  subjectiveExamAttendancePercentPerBatch: 0,
+  studentApprovalSummary: { total: 0, approved: 0, pending: 0 },
+
   });
   const [adminName, setAdminName] = useState("Admin");
   const [loading, setLoading] = useState(true);
@@ -33,11 +39,12 @@ function AdminDashboard() {
 
     try {
       const decoded = jwtDecode(token);
-      const role = decoded["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"];
+      const role =
+        decoded["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"];
       const name = decoded["Username"] || decoded.name || "Admin";
       setAdminName(name);
 
-      if (role !== "Admin") {
+      if (role !== "Admin" && role !== "Business_Executive") {
         setLoading(false);
         navigate("/unauthorized");
         return;
@@ -47,12 +54,13 @@ function AdminDashboard() {
         try {
           const token = localStorage.getItem("jwt");
           const res = await fetch(`${API_BASE_URL}/AdminSummary/dashboard`, {
-            
             headers: {
-              "Authorization": `Bearer ${token}`,
+              Authorization: `Bearer ${token}`,
             },
           });
           const data = await res.json();
+          console.log("Dashboard summary:", data);
+
           setSummary({
             students: data.students || 0,
             professors: data.professors || 0,
@@ -62,9 +70,29 @@ function AdminDashboard() {
             assignments: data.assignments || 0,
             liveClasses: data.liveClasses || 0,
             tasks: data.tasks || 0,
-            leaves: data.leaves || 0
+            leaves: data.leaves || 0,
+            // 👇 assuming your backend uses camelCase via JSON options
+            contentReadPercentPerBatch:
+              data.contentReadPercentPerBatch !== undefined &&
+              data.contentReadPercentPerBatch !== null
+                ? Number(data.contentReadPercentPerBatch)
+                : 0,
+            liveClassAttendancePercentPerBatch:
+              data.liveClassAttendancePercentPerBatch !== undefined &&
+              data.liveClassAttendancePercentPerBatch !== null
+                ? Number(data.liveClassAttendancePercentPerBatch)
+                : data.LiveClassAttendancePercentPerBatch !== undefined &&
+                  data.LiveClassAttendancePercentPerBatch !== null
+                ? Number(data.LiveClassAttendancePercentPerBatch)
+                : 0,
+                  objectiveExamAttendancePercentPerBatch: Number(data.objectiveExamAttendancePercentPerBatch || 0),
+  subjectiveExamAttendancePercentPerBatch: Number(data.subjectiveExamAttendancePercentPerBatch || 0),
+   studentApprovalSummary: {
+    total: data.studentApprovalSummary?.total || 0,
+    approved: data.studentApprovalSummary?.approved || 0,
+    pending: data.studentApprovalSummary?.pending || 0
+  }
           });
-          console.log(data);
         } catch (err) {
           console.error("Failed to fetch dashboard summary", err);
         } finally {
@@ -77,13 +105,7 @@ function AdminDashboard() {
       console.error("Token decode error", err);
       setLoading(false);
     }
-  }, []);
-
-
-  // useEffect(() => {
-  //   if (summary) fetchSummary();
-  // }, [summary]);
-
+  }, [navigate]);
 
   return (
     <div id="main_content" className="font-muli theme-blush">
@@ -96,59 +118,118 @@ function AdminDashboard() {
       <HeaderTop />
       <RightSidebar />
       <LeftSidebar role="Admin" />
-      
+
       <div className="section-wrapper">
-      <div className="page admin-dashboard">
-        <div className="section-body mt-0 pt-0">
-          <div className="container-fluid">
+        <div className="page admin-dashboard pt-0">
+          <div className="section-body mt-3 pt-0">
+            <div className="container-fluid">
+              {/* Welcome Header */}
+              <div className="jumbotron bg-light rounded shadow-sm mb-3 welcome-card dashboard-hero">
+                <h2 className="page-title text-primary pt-0 dashboard-hero-title">
+                  Welcome back,<strong>{adminName}</strong>👋
+                </h2>
+                <p className="text-muted mb-0 dashboard-hero-sub">
+                  Here’s a quick snapshot of your Admin LMS dashboard.
+                </p>
+              </div>
 
-            {/* Welcome Header */}
-            <div className="jumbotron bg-light rounded shadow-sm mb-3 welcome-card dashboard-hero">
-                          <h2 className="page-title text-primary pt-0 dashboard-hero-title">
-                            Welcome back, <strong>{adminName}</strong> 👋
-                          </h2>
-                          <p className="text-muted mb-0 dashboard-hero-sub">
-                            Here’s a quick snapshot of your Admin LMS dashboard.
-                          </p>
-                        </div>
-            {/* Dashboard Cards */}
-            <div className="row ">
-              {[
-                { label: "Professors", value: summary.professors, icon: "fa-male", link: "/professors" },
-                 { label: "Students", value: summary.students, icon: "fa-plane", link: "/students" },
-                { label: "Programmes", value: summary.programmes, icon: "fa-list-alt", link: "/AdminDashboardTabs" },
-               { label: "Discussions", value: summary.programmes, icon: "fa-list", link: "/adddiscussions" },
-                { label: "Library Books", value: summary.books, icon: "fa-book", link: "/library" },
-                { label: "Examinations", value: summary.exams, icon: "fa-pencil-square-o", link: "/admin-exams" },
-                 { label: "Assignments", value: summary.assignments, icon: "fa-pencil-square-o", link: "/admin-manage-assignments" },
-                { label: "Live Classes", value: summary.liveClasses, icon: "fa-video-camera", link: "instructor/live-classes" },
-                { label: "Tasks", value: summary.tasks, icon: "fa-tasks", link: "/taskboard" },
-                
-              ].map((item, idx) => (
-                <div className="col-12 col-sm-6 col-lg-3 mb-3" key={idx}>
-      <div
-        className="welcome-card dashboard-card animate-welcome text-center"
-        role="button"
-        tabIndex={0}
-        onClick={() => navigate(item.link)}
-        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && navigate(item.link)}
-        // className="compact-card text-center shadow-sm"
-        title={`Go to ${item.label}`}
-        aria-label={`Open ${item.label}`}
-      >
-        <i className={`fa ${item.icon}  dashboard-icon text-primary`} aria-hidden="true" />
-        <div className="dashboard-label text-muted">{item.label}</div>
-        <div className="dashboard-count text-dark fw-bold">{item.value}</div>
+              {/* Dashboard Cards */}
+              <div className="row">
+                {[
+                  {
+                    label: "Faculty",
+                    value: summary.professors,
+                    icon: "fa-male",
+                    link: "/professors",
+                  },
+                  {
+                    label: "Students",
+                    value: summary.students,
+                    icon: "fa-user-graduate",
+                    link: "/collegewise-students",
+                  },
+                  {
+                    label: "Courses",
+                    value: summary.programmes,
+                    icon: "fa-list-alt",
+                    link: "/AdminDashboardTabs",
+                  },
+                  {
+                    label: "Library Books",
+                    value: summary.books,
+                    icon: "fa-book",
+                    link: "/library",
+                  },
+                  {
+                    label: "Live Classes",
+                    value: summary.liveClasses,
+                    icon: "fa-video-camera",
+                    link: "/instructor/live-classes",
+                  },
+                  {
+                    label: "Tasks",
+                    value: summary.tasks,
+                    icon: "fa-tasks",
+                    link: "/taskboard",
+                  },
+                  {
+                    label: "Content Read %",
+                    value: summary.contentReadPercentPerBatch ,
+                    icon: "fa-line-chart",
+                    link: "/content-read-analytics",
+                  },
+
+                    {
+                    label: "Live Class Attendance %",
+                    value: summary.liveClassAttendancePercentPerBatch,
+                    icon: "fa-line-chart",
+                    link: "/live-class-attendance-analytics",
+                  },
+                  {
+  label: "Objective Exam Attendance %",
+  value: summary.objectiveExamAttendancePercentPerBatch,
+  icon: "fa-check-circle",
+  link: "/ObjectiveExams-attendance-analytics",
+},
+{
+  label: "Subjective Exam Attendance %",
+  value: summary.subjectiveExamAttendancePercentPerBatch,
+  icon: "fa-clipboard",
+  link: "/SubjectiveExams-attendance-analytics",
+},
+
+          {
+  label: "Total/Approved/Pending",
+  value: `${summary.studentApprovalSummary.total} / ${summary.studentApprovalSummary.approved} / ${summary.studentApprovalSummary.pending}`,
+  icon: "fa-users",
+  link: "/approve-students"
+},
+].map((item, idx) => (
+  <div className="col-12 col-sm-6 col-lg-3 mb-3" key={idx}>
+    <div
+      className="welcome-card dashboard-card animate-welcome text-center"
+      role="button"
+      tabIndex={0}
+      onClick={() => navigate(item.link)}
+      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && navigate(item.link)}
+      title={`Go to ${item.label}`}
+      aria-label={`Open ${item.label}`}
+    >
+      <i className={`fa ${item.icon} dashboard-icon text-primary`} aria-hidden="true" />
+      <div className="dashboard-label text-dark fw-1000">{item.label}</div>
+      <div className="dashboard-count text-dark fw-bold">
+        {/* if value is JSX (approval card), render it; otherwise render value */}
+        {typeof item.value === "object" && !!item.value.props ? item.value : item.value}
       </div>
-               </div>
-                // </div>
-              ))}
+    </div>
+  </div>
+))}
+              </div>
             </div>
-
           </div>
+
+          <Footer />
         </div>
-        <Footer />
-      </div>
       </div>
     </div>
   );

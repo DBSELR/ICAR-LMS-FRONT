@@ -15,6 +15,7 @@ function Leave() {
       <HeaderTop />
       <RightSidebar />
       <LeftSidebar />
+      
 
       <div className="page">
         {/* Header Section */}
@@ -54,7 +55,7 @@ function Leave() {
           </div>
         </div>
 
-        <Footer />
+         
       </div>
     </div>
   );

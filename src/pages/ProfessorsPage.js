@@ -8,6 +8,7 @@ import LeftSidebar from "../components/LeftSidebar";
 import Footer from "../components/Footer";
 import { FaChalkboardTeacher } from "react-icons/fa";
 import API_BASE_URL from "../config";
+import { getUserRole } from "../utils/auth";
 
 function ProfessorsPage() {
   const [professors, setProfessors] = useState([]);
@@ -20,6 +21,8 @@ function ProfessorsPage() {
   const [showAddEditModal, setShowAddEditModal] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [loading, setLoading] = useState(true);
+  // determine user role to control UI permissions
+  const userRole = getUserRole();
 
   useEffect(() => {
     const loadData = async () => {
@@ -144,28 +147,40 @@ function ProfessorsPage() {
       console.error("Error:", error);
     }
   };
+// ProfessorsPage.js (or wherever you define onSubmit)
+const handleAdd = async (payload) => {
+  const token = localStorage.getItem("jwt");
 
-  const handleAdd = async (newProfessor) => {
-    try {
-      const token = localStorage.getItem("jwt");
-      const res = await fetch(`${API_BASE_URL}/professor`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify(newProfessor),
-      });
+  // normalize base (no trailing slash)
+  const base = String(API_BASE_URL || "").replace(/\/+$/, "");
 
-      if (!res.ok) {
-        const errText = await res.text();
-        return { ok: false, error: errText || "Save failed" };
-      }
+  // if base already ends with /api, use it; otherwise add /api
+  const url = /\/api$/i.test(base)
+    ? `${base}/Professor`        // e.g., https://localhost:7045/api/Professor
+    : `${base}/api/Professor`;   // e.g., https://localhost:7045/api/Professor
 
-      refreshProfessors();
-      closeAddEditModal();
-      return { ok: true };
-    } catch (err) {
-      return { ok: false, error: err.message || "Unexpected error" };
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const bodyText = await res.text(); // read body for details in case of error
+  if (!res.ok) {
+    if (res.status === 409) {
+      // Always throw a plain error with only the friendly message
+      throw new Error("Duplicate entries detected. Please provide a unique email address and phone number.");
     }
-  };
+    console.error("❌ POST /Professor failed:", res.status, bodyText);
+    throw new Error(bodyText || `HTTP ${res.status}`);
+  }
+  return bodyText ? JSON.parse(bodyText) : null;
+};
+
+
 
   const handleCloseModal = () => {
     setSelectedProfessor(null);
@@ -189,18 +204,18 @@ function ProfessorsPage() {
       <HeaderTop />
       <RightSidebar />
       <LeftSidebar />
-
+       
       <div className="section-wrapper">
-      <div className="page admin-dashboard">
-        <div className="section-body mt-0 pt-0">
+      <div className="page admin-dashboard pt-0">
+        <div className="section-body mt-3 pt-0">
           <div className="container-fluid">
             <div className="jumbotron bg-light rounded shadow-sm mb-3 welcome-card dashboard-hero">
               <div>
                 <h2 className="page-title text-primary pt-0 dashboard-hero-title">
-                  <FaChalkboardTeacher /> Manage Professors
+                  <FaChalkboardTeacher /> Manage Faculty
                 </h2>
                 <p className="text-muted mb-0 dashboard-hero-sub">
-                  View, add, and manage all professors in the system.
+                  View, add, and manage all Faculty in the system.
                 </p>
               </div>
             </div>
@@ -229,10 +244,11 @@ function ProfessorsPage() {
             <div className="welcome-card animate-welcome">
               <div className="card-header bg-primary text-white d-flex align-items-center">
                 <FaChalkboardTeacher className="mr-2 mt-2" />
-                <h6 className="mb-0">Professors Management</h6>
+                <h6 className="mb-0">Faculty Management</h6>
               </div>
-
-              <div className="card-body semester-panel-body">
+              
+              
+              <div className="card-body">
                 <div className="d-flex justify-content-between mb-3">
                   <input
                     type="text"
@@ -242,13 +258,16 @@ function ProfessorsPage() {
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
 
-                  <button className="btn btn-primary" onClick={handleAddNew}>
-                    <i className="fa fa-plus me-2"></i> Add Professor
-                  </button>
+                  {userRole !== "College" && (
+                    <button className="btn btn-primary" onClick={handleAddNew}>
+                      <i className="fa fa-plus mr-1"></i> Add Faculty
+                    </button>
+                  )}
                 </div>
-
+                
+                <div className="semester-panel-body">
                 {loading ? (
-                  <div className="text-center p-5">Loading professors...</div>
+                  <div className="text-center p-5">Loading faculty...</div>
                 ) : (
                   <ProfessorsTable
                     professors={filteredProfessors}
@@ -256,8 +275,12 @@ function ProfessorsPage() {
                     onEdit={handleEdit}
                     onDelete={handleDelete}
                     onAssignCourses={handleAssignCourses}
+                    // hide action buttons for College role
+                    showActions={userRole !== "College"}
                   />
                 )}
+                </div>
+
               </div>
             </div>
           </div>
@@ -275,10 +298,10 @@ function ProfessorsPage() {
                 <div className="modal-header">
                   <h5 className="modal-title">
                     {mode === "edit"
-                      ? "Edit Professor"
+                      ? "Edit Faculty"
                       : mode === "view"
-                        ? "View Professor"
-                        : "Add Professor"}
+                        ? "View Faculty"
+                        : "Add Faculty"}
                   </h5>
                   <button
                     type="button"
@@ -318,10 +341,9 @@ function ProfessorsPage() {
           />
         )}
 
-        <Footer />
+         
       </div>
       </div>
-
     </div>
   );
 }

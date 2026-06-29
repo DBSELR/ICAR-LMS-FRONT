@@ -120,17 +120,17 @@ function InstructorExamList() {
     <div id="main_content" className="font-muli theme-blush">
       <HeaderTop />
       <RightSidebar />
-      <LeftSidebar role="Instructor" />
+      <LeftSidebar role="Faculty" />
 
       <div className="section-wrapper">
       <div className="page admin-dashboard">
-        <div className="section-body mt-0 pt-0">
+        <div className="section-body mt-3 pt-0">
           <div className="container-fluid">
             <div className="jumbotron bg-light rounded shadow-sm mb-3 welcome-card dashboard-hero">
               <h2 className="page-title text-primary pt-0 dashboard-hero-title">
-                <i class="fa-solid fa-file-pen"></i> Manage Exams
+                <i className="fa-solid fa-file-pen"></i> Manage Exams
               </h2>
-              <p className="text-muted mb-0 dashboard-hero-sub ">Manage exams efficiently</p>
+              <p className="text-muted mb-0 dashboard-hero-sub">Manage exams efficiently</p>
             </div>
             <div className="container-fluid mb-3">
               {/* <div className="d-flex justify-content-end">
@@ -200,7 +200,7 @@ function InstructorExamList() {
                                             ? "Assignments"
                                             : "Theory"}
                                         </h5>
-                                        <div className="row semester-panel-body">
+                                        <div className="row">
                                           {types[type].map(
                                             ({ exam, course }) => (
                                               <div
@@ -331,10 +331,9 @@ function InstructorExamList() {
             )}
           </div>
         </div>
-        <Footer />
+         
       </div>
       </div>
-
       <ConfirmationPopup
         show={showConfirm}
         message="Are you sure you want to delete this exam?"
