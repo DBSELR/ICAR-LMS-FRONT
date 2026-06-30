@@ -445,10 +445,10 @@ function NewCourses() {
                       </p>
                     </div>
 
-                    <div className="mt-4 pt-3 border-top d-flex align-items-center text-muted" style={{ fontSize: "0.85rem", lineHeight: "1.5" }}>
+                    {/* <div className="mt-4 pt-3 border-top d-flex align-items-center text-muted" style={{ fontSize: "0.85rem", lineHeight: "1.5" }}>
                       <i className="fa-solid fa-circle-info text-primary" style={{ marginRight: "10px", fontSize: "1.1rem", flexShrink: 0 }}></i>
                       <span>Note: Only students meeting minimum assignment and exam thresholds qualify for NPTEL / ICAR certificate.</span>
-                    </div>
+                    </div> */}
                   </div>
                 </div>
               </div>
