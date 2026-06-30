@@ -4,7 +4,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 import * as signalR from "@microsoft/signalr";
 import Error404 from "./pages/Error404"; // adjust the path if needed
 import Error500 from "./pages/Error500";
@@ -49,12 +49,10 @@ import StudentsPage from "./pages/StudentsPage";
 import Collegewisestudents from "./pages/Collegewisestudents";
 import TaskboardPage from "./pages/TaskboardPage";
 import TransportPage from "./pages/TransportPage";
-import IndexPage from "./pages/IndexPage";
 import StudentDashboard from "../src/pages/StudentDashboard";
 import AdminDashboard from "../src/pages/AdminDashboard";
 import StudentAssignments from "./pages/StudentAssignmentList";
 import StudentFeeStatus from "./pages/StudentFeeStatus";
-import { jwtDecode } from "jwt-decode";
 import AdminUsers from "./pages/AdminUsers";
 import { getLoggedInUserId } from "../src/utils/auth";
 import AdminCourses from "./pages/AdminCourses";
@@ -104,9 +102,6 @@ import AdminCourseUploadPage from "./components/courses/AdminCourseUploadPage";
 import CourseContentPage from "./components/courses/CourseContentPage";
 import InstructorAttendanceView from "./components/InstructorAttendanceView";
 
-import SubmitTicket from "./pages/SubmitTicket";
-import AdminSupportTickets from "./pages/AdminSupportTickets";
-
 import StudentProfilePage from "./components/students/StudentProfilePage";
 import InstructorProfilePage from "./components/Instructor/InstructorProfilePage";
 import AdminStudentOverview from "./pages/AdminStudentOverview";
@@ -137,8 +132,6 @@ import InstructorMeetingsPage from "./pages/InstructorMeetingsPage";
 import ReportsStudentAdmission from "./components/Reports/ReportsStudentAdmission";
 import AdminReportsDashboard from "./components/Reports/AdminReportsDashboard";
 import StudentLibrary from "./components/library/StudentLibrary";
-
-import "./style.css";
 import StudentTickets from "./pages/supportTicketsPages/student/StudentTickets";
 import StudentTicketDetails from "./pages/supportTicketsPages/student/StudentTicketDetails";
 import StudentNewTicket from "./pages/supportTicketsPages/student/StudentNewTicket";
@@ -178,6 +171,143 @@ import ApproveStudentsListPage from "./pages/ApproveStudentsListPage.js";
 import SendSms from "./pages/SendSms";
 import ApplyDiscount from "./pages/ApplyDiscount";
 
+// SA Land Website Imports
+import SaLandLayout from "./sa-land/components/SaLandLayout";
+import SaLandHome from "./sa-land/pages/Home";
+import SaLandCourses from "./sa-land/pages/Courses";
+import SaLandAbout from "./sa-land/pages/About";
+import SaLandRegistrationPage from "./sa-land/pages/RegistrationPage";
+import SaLandCourseDetail from "./sa-land/pages/CourseDetail";
+import SaLandContact from "./sa-land/pages/Contact";
+import SaLandYoutubeContactPage from "./sa-land/pages/YoutubeContactPage";
+import SaLandPrivacyPolicy from "./sa-land/pages/PrivacyPolicy";
+import SaLandRefundPolicy from "./sa-land/pages/RefundPolicy";
+import SaLandReturnPolicy from "./sa-land/pages/ReturnPolicy";
+import SaLandCancellationPolicy from "./sa-land/pages/CancellationPolicy";
+import SaLandTermsConditions from "./sa-land/pages/TermsConditions";
+import SaLandPaymentResult from "./sa-land/pages/PaymentResult";
+import SaLandBookDemoPage from "./sa-land/pages/BookDemoPage";
+import SaLandCalendlyDemoPage from "./sa-land/pages/CalendlyDemoPage";
+
+function CssSwitcher() {
+  const location = useLocation();
+  const [isSwitching, setIsSwitching] = useState(false);
+  const prevModeRef = useRef(null);
+
+  useEffect(() => {
+    if (isSwitching) {
+      const timer = setTimeout(() => {
+        setIsSwitching(false);
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+  }, [isSwitching]);
+
+  useEffect(() => {
+    const saLandPaths = [
+      "/",
+      "/online-skill-development-courses-india",
+      "/register",
+      "/best-digital-marketing-course-online-india-with-certificate",
+      "/best-graphic-design-course-online-india-with-certificate",
+      "/best-video-editing-course-online-india-with-certificate",
+      "/get-in-touch-ed-vedha",
+      "/youtube-contact",
+      "/privacy-policy",
+      "/refund-policy",
+      "/return-policy",
+      "/cancellation-policy",
+      "/terms-conditions",
+      "/payment-result",
+      "/book-demo",
+      "/calendly-demo"
+    ];
+    const isSaLandCourseDetail = location.pathname.startsWith("/course/");
+    const isSaLandPublicCourses = location.pathname === "/courses" && !localStorage.getItem("jwt");
+    const isSaLand = saLandPaths.includes(location.pathname) || isSaLandCourseDetail || isSaLandPublicCourses;
+    const currentMode = isSaLand ? "sa-land" : "lms";
+
+    const prevMode = prevModeRef.current;
+    const isModeChanged = prevMode !== currentMode;
+    prevModeRef.current = currentMode;
+
+    if (isModeChanged) {
+      if (prevMode !== null) {
+        setIsSwitching(true);
+      }
+
+      const saLandCss = document.getElementById("sa-land-style");
+      const lmsBootstrap = document.getElementById("lms-bootstrap-style");
+      const lmsCustom = document.getElementById("lms-custom-style");
+      const lmsOverride = document.getElementById("lms-override-style");
+
+      if (isSaLand) {
+        if (saLandCss) {
+          saLandCss.disabled = false;
+          if (prevMode === "lms") {
+            const parent = saLandCss.parentNode;
+            if (parent) {
+              const nextSibling = saLandCss.nextSibling;
+              parent.removeChild(saLandCss);
+              parent.insertBefore(saLandCss, nextSibling);
+            }
+          }
+        }
+        if (lmsBootstrap) lmsBootstrap.disabled = true;
+        if (lmsCustom) lmsCustom.disabled = true;
+        if (lmsOverride) lmsOverride.disabled = true;
+      } else {
+        if (saLandCss) saLandCss.disabled = true;
+        if (lmsBootstrap) lmsBootstrap.disabled = false;
+        if (lmsCustom) lmsCustom.disabled = false;
+        if (lmsOverride) lmsOverride.disabled = false;
+      }
+    }
+  }, [location.pathname]);
+
+  if (!isSwitching) return null;
+
+  return (
+    <div style={{
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: "#ffffff",
+      zIndex: 9999999,
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      fontFamily: "'Inter', 'Barlow', sans-serif"
+    }}>
+      <style>{`
+        @keyframes edvedha-spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
+      <div style={{
+        width: "64px",
+        height: "64px",
+        borderRadius: "50%",
+        border: "5px solid #f1f5f9",
+        borderTopColor: "#ea580c",
+        animation: "edvedha-spin 0.75s linear infinite"
+      }} />
+      <div style={{
+        marginTop: "24px",
+        fontSize: "1.25rem",
+        fontWeight: "600",
+        color: "#0f172a",
+        letterSpacing: "0.5px"
+      }}>
+        Loading Ed Vedha...
+      </div>
+    </div>
+  );
+}
 
 function App() {
   const loggedInStudentId = 1;
@@ -213,7 +343,7 @@ function App() {
         console.log("✅ Received forceLogout event");
         localStorage.removeItem("jwt");
         setToken(null); // 👈 update state so hub stops
-        window.location.href = "/";
+        window.location.href = "/login";
       });
     };
 
@@ -236,6 +366,7 @@ function App() {
 
   return (
     <Router>
+      <CssSwitcher />
       <Routes>
         {/* Example of normal route */}
         {/* <Route path="/" element={<h1>Welcome to the Dashboard</h1>} /> */}
@@ -244,7 +375,26 @@ function App() {
         <Route path="*" element={<Error404 />} />
         <Route path="/500" element={<Error500 />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
-        <Route path="/" element={<Login />} />
+        <Route path="/login" element={<Login />} />
+
+        {/* SA Land Website Routes */}
+        <Route path="/" element={<SaLandLayout><SaLandHome /></SaLandLayout>} />
+        <Route path="/online-skill-development-courses-india" element={<SaLandLayout><SaLandAbout /></SaLandLayout>} />
+        <Route path="/register" element={<SaLandLayout><SaLandRegistrationPage /></SaLandLayout>} />
+        <Route path="/course/:id" element={<SaLandLayout><SaLandCourseDetail /></SaLandLayout>} />
+        <Route path="/best-digital-marketing-course-online-india-with-certificate" element={<SaLandLayout><SaLandCourseDetail seoSlug="best-digital-marketing-course-online-india-with-certificate" /></SaLandLayout>} />
+        <Route path="/best-graphic-design-course-online-india-with-certificate" element={<SaLandLayout><SaLandCourseDetail seoSlug="best-graphic-design-course-online-india-with-certificate" /></SaLandLayout>} />
+        <Route path="/best-video-editing-course-online-india-with-certificate" element={<SaLandLayout><SaLandCourseDetail seoSlug="best-video-editing-course-online-india-with-certificate" /></SaLandLayout>} />
+        <Route path="/get-in-touch-ed-vedha" element={<SaLandLayout><SaLandContact /></SaLandLayout>} />
+        <Route path="/youtube-contact" element={<SaLandLayout><SaLandYoutubeContactPage /></SaLandLayout>} />
+        <Route path="/privacy-policy" element={<SaLandLayout><SaLandPrivacyPolicy /></SaLandLayout>} />
+        <Route path="/refund-policy" element={<SaLandLayout><SaLandRefundPolicy /></SaLandLayout>} />
+        <Route path="/return-policy" element={<SaLandLayout><SaLandReturnPolicy /></SaLandLayout>} />
+        <Route path="/cancellation-policy" element={<SaLandLayout><SaLandCancellationPolicy /></SaLandLayout>} />
+        <Route path="/terms-conditions" element={<SaLandLayout><SaLandTermsConditions /></SaLandLayout>} />
+        <Route path="/payment-result" element={<SaLandLayout><SaLandPaymentResult /></SaLandLayout>} />
+        <Route path="/book-demo" element={<SaLandLayout><SaLandBookDemoPage /></SaLandLayout>} />
+        <Route path="/calendly-demo" element={<SaLandLayout><SaLandCalendlyDemoPage /></SaLandLayout>} />
 
         {/* Protected routes */}
         <Route path="/chat" element={<ProtectedRoute><ChatApp /></ProtectedRoute>} />
@@ -255,7 +405,9 @@ function App() {
         <Route path="/filemanager" element={<ProtectedRoute><AppFileManager /></ProtectedRoute>} />
         <Route path="/social" element={<ProtectedRoute><AppSocial /></ProtectedRoute>} />
         <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
-        <Route path="/courses" element={<ProtectedRoute><Courses /></ProtectedRoute>} />
+        <Route path="/courses" element={
+          localStorage.getItem("jwt") ? <ProtectedRoute><Courses /></ProtectedRoute> : <SaLandLayout><SaLandCourses /></SaLandLayout>
+        } />
         <Route path="/courses/details" element={<ProtectedRoute><CourseDetails /></ProtectedRoute>} />
         <Route path="/departments" element={<ProtectedRoute><Departments /></ProtectedRoute>} />
         <Route path="/events" element={<ProtectedRoute><Events /></ProtectedRoute>} />
@@ -562,7 +714,6 @@ function App() {
 />
 
 
-<Route path="/payment-result" element={<PaymentResult />} />
 <Route path="/payments-page" element={<PaymentsPage />} />
       </Routes>
 

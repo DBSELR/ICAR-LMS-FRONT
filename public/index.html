@@ -2,22 +2,66 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <link rel="icon" href="%PUBLIC_URL%/icon.jpg" />
     <link rel="shortcut icon" href="%PUBLIC_URL%/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#000000" />
     <meta
       name="description"
-      content="Skill Ascent LMS - Learning Management System"
+      content="Ed Vedha LMS - Learning Management System"
     />
 
     <script src="https://player.vimeo.com/api/player.js"></script>
 
     <!-- CSS -->
-  <link rel="stylesheet" href="%PUBLIC_URL%/assets/plugins/bootstrap/css/bootstrap.min.css" />
-  <link rel="stylesheet" href="%PUBLIC_URL%/assets/css/style.min.css" />
+  <link id="lms-bootstrap-style" rel="stylesheet" href="%PUBLIC_URL%/assets/plugins/bootstrap/css/bootstrap.min.css" />
+  <link id="lms-custom-style" rel="stylesheet" href="%PUBLIC_URL%/assets/css/style.min.css" />
+  <link id="lms-override-style" rel="stylesheet" href="%PUBLIC_URL%/lms-style.css" />
+  <link id="sa-land-style" rel="stylesheet" href="%PUBLIC_URL%/sa-land-style.css" />
   <!-- Global font override: Barlow -->
   <link rel="stylesheet" href="%PUBLIC_URL%/assets/css/fonts-barlow.css" />
+
+  <script>
+    (function() {
+      var path = window.location.pathname;
+      var saLandPaths = [
+        "/",
+        "/online-skill-development-courses-india",
+        "/register",
+        "/best-digital-marketing-course-online-india-with-certificate",
+        "/best-graphic-design-course-online-india-with-certificate",
+        "/best-video-editing-course-online-india-with-certificate",
+        "/get-in-touch-ed-vedha",
+        "/youtube-contact",
+        "/privacy-policy",
+        "/refund-policy",
+        "/return-policy",
+        "/cancellation-policy",
+        "/terms-conditions",
+        "/payment-result",
+        "/book-demo",
+        "/calendly-demo"
+      ];
+      var isSaLand = saLandPaths.indexOf(path) !== -1 || path.indexOf("/course/") === 0 || (path === "/courses" && !localStorage.getItem("jwt"));
+      
+      var saLandCss = document.getElementById("sa-land-style");
+      var lmsBootstrap = document.getElementById("lms-bootstrap-style");
+      var lmsCustom = document.getElementById("lms-custom-style");
+      var lmsOverride = document.getElementById("lms-override-style");
+
+      if (isSaLand) {
+        if (lmsBootstrap) lmsBootstrap.disabled = true;
+        if (lmsCustom) lmsCustom.disabled = true;
+        if (lmsOverride) lmsOverride.disabled = true;
+        if (saLandCss) saLandCss.disabled = false;
+      } else {
+        if (saLandCss) saLandCss.disabled = true;
+        if (lmsBootstrap) lmsBootstrap.disabled = false;
+        if (lmsCustom) lmsCustom.disabled = false;
+        if (lmsOverride) lmsOverride.disabled = false;
+      }
+    })();
+  </script>
 
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/dbs-logo.png" />
     <!--
@@ -40,7 +84,7 @@
       work correctly both with client-side routing and a non-root public URL.
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
-    <title>Skill Ascent LMS</title>
+    <title>Ed Vedha LMS</title>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>

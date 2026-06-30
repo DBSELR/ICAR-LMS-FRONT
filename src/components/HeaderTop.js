@@ -186,7 +186,7 @@ function HeaderTop({ notificationCount = 0 }) {
               e.preventDefault();
               localStorage.removeItem("jwt");
               localStorage.removeItem("user");
-              window.location.href = "/";
+              window.location.href = "/login";
             }}
           >
             <i className="fe fe-power" title="Logout"></i>

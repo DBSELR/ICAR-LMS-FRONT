@@ -23,7 +23,7 @@ export default function useSessionHub() {
       connection.on("forceLogout", () => {
         console.log("✅ Received forceLogout event");
         localStorage.removeItem("jwt");
-        window.location.href = "/";
+        window.location.href = "/login";
       });
     };
 

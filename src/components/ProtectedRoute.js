@@ -8,7 +8,7 @@ function ProtectedRoute({ children }) {
 
   if (!token) {
     // Not logged in → redirect to login
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   try {
@@ -48,7 +48,7 @@ function ProtectedRoute({ children }) {
   } catch (err) {
     console.error("Invalid token:", err);
     localStorage.removeItem("jwt");
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
 }
 
