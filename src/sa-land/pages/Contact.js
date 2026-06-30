@@ -6,7 +6,7 @@ const Contact = () => {
     return (
         <>
             <ContactUsPage />
-            <FAQPage />
+            {/* <FAQPage /> */}
         </>
     );
 };
