@@ -30,6 +30,7 @@ import LeaveRequest from "./pages/LeaveRequest";
 import Library from "./pages/Library";
 import RoleMenuMapping from "./pages/RoleMenuMapping";
 import Login from "./pages/Login";
+import NewCourses from "./pages/NewCourses";
 import Noticeboard from "./pages/Noticeboard";
 import OurCentres from "./pages/OurCentres";
 import PageEmpty from "./pages/PageEmpty";
@@ -242,17 +243,7 @@ function CssSwitcher() {
       const lmsOverride = document.getElementById("lms-override-style");
 
       if (isSaLand) {
-        if (saLandCss) {
-          saLandCss.disabled = false;
-          if (prevMode === "lms") {
-            const parent = saLandCss.parentNode;
-            if (parent) {
-              const nextSibling = saLandCss.nextSibling;
-              parent.removeChild(saLandCss);
-              parent.insertBefore(saLandCss, nextSibling);
-            }
-          }
-        }
+        if (saLandCss) saLandCss.disabled = false;
         if (lmsBootstrap) lmsBootstrap.disabled = true;
         if (lmsCustom) lmsCustom.disabled = true;
         if (lmsOverride) lmsOverride.disabled = true;
@@ -409,6 +400,7 @@ function App() {
           localStorage.getItem("jwt") ? <ProtectedRoute><Courses /></ProtectedRoute> : <SaLandLayout><SaLandCourses /></SaLandLayout>
         } />
         <Route path="/courses/details" element={<ProtectedRoute><CourseDetails /></ProtectedRoute>} />
+        <Route path="/new-courses" element={<NewCourses />} />
         <Route path="/departments" element={<ProtectedRoute><Departments /></ProtectedRoute>} />
         <Route path="/events" element={<ProtectedRoute><Events /></ProtectedRoute>} />
         <Route

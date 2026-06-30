@@ -146,7 +146,7 @@ function Login() {
       <style>{`
         .lms-login-container {
           min-height: 100vh;
-          background: #f8fafc;
+          background: linear-gradient(135deg, #eaf8f0 0%, #f4fbf7 45%, #fffef9 100%);
           display: flex;
           flex-direction: column;
           justify-content: center;
@@ -154,17 +154,93 @@ function Login() {
           padding: 20px;
           padding-bottom: 70px; /* Space for fixed privacy footer */
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+          position: relative;
+          overflow: hidden;
+        }
+        .floating-agri-bg {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          z-index: 1;
+          pointer-events: none;
+        }
+        .agri-icon {
+          position: absolute;
+          opacity: 0.22;
+        }
+        .icon-1 { top: 12%; left: 8%; font-size: 2.8rem; color: #16a34a; animation: floatUp 15s infinite ease-in-out; }
+        .icon-2 { top: 75%; left: 14%; font-size: 3.2rem; color: #e65f1e; animation: floatSide 18s infinite ease-in-out; }
+        .icon-3 { top: 20%; right: 10%; font-size: 3.5rem; color: #ca8a04; animation: floatDiagonal 16s infinite ease-in-out; }
+        .icon-4 { top: 82%; right: 12%; font-size: 2.5rem; color: #16a34a; animation: floatUp 20s infinite ease-in-out; }
+        .icon-5 { top: 45%; left: 5%; font-size: 2.4rem; color: #059669; animation: floatDiagonal 14s infinite ease-in-out; }
+        .icon-6 { top: 15%; left: 45%; font-size: 2.2rem; color: #0284c7; animation: floatSide 17s infinite ease-in-out; }
+        .icon-7 { top: 60%; right: 5%; font-size: 3rem; color: #15803d; animation: floatUp 19s infinite ease-in-out; }
+        .icon-8 { top: 85%; left: 45%; font-size: 2.6rem; color: #d97706; animation: floatSide 15s infinite ease-in-out; }
+        .icon-9 { top: 35%; right: 28%; font-size: 2.3rem; color: #16a34a; animation: floatDiagonal 22s infinite ease-in-out; }
+        .lms-back-wrapper {
+          position: absolute;
+          top: 30px;
+          left: 40px;
+          z-index: 20;
+        }
+        .lms-back-btn {
+          display: inline-flex;
+          align-items: center;
+          background: #ffffff;
+          color: #1e293b;
+          text-decoration: none;
+          padding: 10px 22px;
+          border-radius: 30px;
+          font-weight: 600;
+          font-size: 0.92rem;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(22, 163, 74, 0.1);
+          border: 1px solid rgba(22, 163, 74, 0.22);
+          transition: all 0.25s ease;
+          cursor: pointer;
+        }
+        .lms-back-btn:hover {
+          background: #e65f1e;
+          color: #ffffff;
+          transform: translateX(-4px);
+          box-shadow: 0 6px 18px rgba(230, 95, 30, 0.28);
+          border-color: #e65f1e;
+        }
+        @media (max-width: 768px) {
+          .lms-back-wrapper {
+            position: relative;
+            top: auto;
+            left: auto;
+            margin-bottom: 20px;
+            align-self: flex-start;
+          }
+        }
+
+        @keyframes floatUp {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          50% { transform: translateY(-35px) rotate(12deg); }
+        }
+        @keyframes floatSide {
+          0%, 100% { transform: translateX(0px) rotate(0deg); }
+          50% { transform: translateX(35px) rotate(-10deg); }
+        }
+        @keyframes floatDiagonal {
+          0%, 100% { transform: translate(0px, 0px) rotate(0deg); }
+          50% { transform: translate(-25px, -25px) rotate(15deg); }
         }
         .lms-login-card {
           background: #ffffff;
           border-radius: 12px;
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+          box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08), 0 5px 15px rgba(22, 163, 74, 0.05);
           max-width: 850px;
           width: 100%;
           display: flex;
           flex-direction: row;
           overflow: hidden;
-          border: 1px solid #e2e8f0;
+          border: 1px solid rgba(22, 163, 74, 0.18);
+          position: relative;
+          z-index: 10;
         }
         .lms-login-left {
           flex: 1;
@@ -293,6 +369,33 @@ function Login() {
           }
         }
       `}</style>
+
+      {/* Back to SA Land Home Page Button */}
+      <div className="lms-back-wrapper">
+        <a
+          href="/"
+          onClick={(e) => {
+            e.preventDefault();
+            window.location.href = "/";
+          }}
+          className="lms-back-btn"
+        >
+          <i className="fa-solid fa-arrow-left me-2"></i> Back to Home
+        </a>
+      </div>
+
+      {/* Floating Background Agriculture Elements */}
+      <div className="floating-agri-bg">
+        <i className="fa-solid fa-leaf agri-icon icon-1"></i>
+        <i className="fa-solid fa-seedling agri-icon icon-2"></i>
+        <i className="fa-solid fa-wheat-awn agri-icon icon-3"></i>
+        <i className="fa-solid fa-tractor agri-icon icon-4"></i>
+        <i className="fa-solid fa-spa agri-icon icon-5"></i>
+        <i className="fa-solid fa-droplet agri-icon icon-6"></i>
+        <i className="fa-solid fa-leaf agri-icon icon-7"></i>
+        <i className="fa-solid fa-wheat-awn agri-icon icon-8"></i>
+        <i className="fa-solid fa-seedling agri-icon icon-9"></i>
+      </div>
 
       <div className="lms-login-card">
         {/* Left Side: Logo & Branding */}
